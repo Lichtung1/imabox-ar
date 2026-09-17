@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>IMABOX · Come closer</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#202221;color:#fff;font:16px system-ui,sans-serif}canvas{display:block;position:fixed;inset:0}#ui{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;padding:max(20px,env(safe-area-inset-top)) 20px max(22px,env(safe-area-inset-bottom));gap:16px}header,.panel{pointer-events:auto;background:rgba(23,25,24,.92);border:1px solid #ffffff24;border-radius:20px;padding:18px;max-width:440px;width:100%;margin:0 auto}h1{font-size:17px;letter-spacing:.16em;margin:0 0 8px}p{line-height:1.45;margin:8px 0;font-size:14px;color:#d8ddda}label{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:10px 0;font-size:14px}select{background:#363a37;color:white;border:1px solid #747b75;border-radius:8px;padding:8px;font:inherit}button{border:0;border-radius:12px;padding:14px 16px;background:#f26b3a;color:#181a19;font-size:16px;font-weight:750;cursor:pointer;min-height:48px}button:disabled{opacity:.45;cursor:default}.actions{display:flex;gap:8px;flex-wrap:wrap}.actions button{flex:1}.secondary{background:#3b443e;color:white}#exit{position:absolute;right:20px;top:20px;pointer-events:auto}body.ar header{margin-right:70px;max-width:calc(100% - 70px);padding:12px}body.ar h1{display:none}[hidden]{display:none!important}#status{margin:0}#error{color:#ffc4ad}a{color:#ffab86}small{color:#bcc8c0;font-size:12px}
+</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
+</head>
+<body>
+<div id="ui">
+<header><h1>IMABOX · v4</h1><p id="status" role="status">Loading your character…</p></header>
+<button id="exit" class="secondary" hidden>Exit</button>
+<section class="panel">
+<div id="settings">
+<label>Placement <select id="placement"><option value="distance">At chosen distance</option><option value="surface" selected>On the surface I’m pointing at</option></select></label>
+<label id="distance-setting" hidden>Starting distance <select id="distance"><option value="3">3 metres</option><option value="5" selected>5 metres</option><option value="8">8 metres</option></select></label>
+<label>Character height <select id="height"><option value="0.5">0.5 metres</option><option value="1" selected>1 metre</option><option value="1.5">1.5 metres</option><option value="2">2 metres</option></select></label>
+<label>Facing direction <select id="facing"><option value="0">Normal</option><option value="180">Turn around</option></select></label>
+<p id="hint">The orange circle marks where the character will stand. For a table, choose “On the surface I’m pointing at”. Use a clear, level floor for the run.</p>
+</div>
+<p style="margin:0 0 8px;font-size:12px">v4 · Surface alignment</p>
+<div id="height-trim" hidden><label>Height correction <output id="trim-value">0 cm</output></label><input aria-label="Height correction in centimetres" id="trim" type="range" min="-100" max="100" step="1" value="0" style="width:100%"></div>
+<p id="error" role="alert" hidden></p>
+<div class="actions"><button id="enter" disabled>Loading…</button><button id="place" hidden disabled>Place character</button><button id="run" hidden>Run towards me</button><button id="reset" class="secondary" hidden>Place again</button></div>
+<p id="fallback" hidden>Custom AR needs a compatible Android phone and Chrome. <a href="https://arvr.google.com/scene-viewer/1.0?file=https://lichtung1.github.io/imabox-ar/char1.glb&mode=ar_only">Open basic Google AR</a> (manual placement; no controlled approach).</p>
+</section>
+</div>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+const $ = id => document.getElementById(id);
+const status = text => $('status').textContent = text;
+const error = text => { $('error').textContent = text; $('error').hidden = !text; };
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, .01, 100);
+camera.position.set(0, 1.2, 3);
+const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2)); renderer.setSize(innerWidth,innerHeight);
+renderer.xr.enabled = true; renderer.xr.setReferenceSpaceType('local');
+document.body.prepend(renderer.domElement);
+const controls = new OrbitControls(camera,renderer.domElement); controls.target.set(0,.5,0); controls.update();
+scene.add(new THREE.HemisphereLight(0xffffff,0x7a8275,3));
+const sun = new THREE.DirectionalLight(0xffffff,3); sun.position.set(3,5,4); scene.add(sun);
+// Placement, facing, size and animation compensation each have their own parent.
+const lift = new THREE.Group();
+const actor = new THREE.Group(), heading = new THREE.Group(), size = new THREE.Group(), compensation = new THREE.Group();
+scene.add(actor); actor.add(lift); lift.add(heading); heading.add(size); size.add(compensation);
+const marker = new THREE.Mesh(new THREE.RingGeometry(.14,.19,40).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0xf26b3a,side:THREE.DoubleSide}));
+marker.visible=false; scene.add(marker);
+let model,mixer,action,tracker,baseTracker,baseOffset,baseHeight;
+let session=null,hitSource=null,state='preview',lastTime=0,ready=false;
+const start = new THREE.Vector3(),end = new THREE.Vector3(),forward = new THREE.Vector3(),viewer = new THREE.Vector3(),candidate = new THREE.Vector3();
+const hitMatrix = new THREE.Matrix4(),hitPoint = new THREE.Vector3(),tracked = new THREE.Vector3();
+let travelled=0,journey=0,wait=0;
+const STOP_DISTANCE=1,SPEED=1.1;
+const spawnPoint = new THREE.Vector3();
+let contactCorrection=0;
+$('trim').oninput=()=>{lift.position.y=contactCorrection+Number($('trim').value)/100;$('trim-value').textContent=$('trim').value+' cm';};
+function alignToSurface(){
+ lift.position.y=0;scene.updateMatrixWorld(true);
+ model.traverse(node=>{if(node.isSkinnedMesh)node.skeleton.update();});
+ const bounds=new THREE.Box3().setFromObject(model,true);
+ contactCorrection=actor.position.y-bounds.min.y;
+ $('trim').value=0;$('trim-value').textContent='0 cm';lift.position.y=contactCorrection;
+}
+function getSpawnPoint(viewPosition,lookDirection,surfacePoint,mode,distance){
+ const point=surfacePoint.clone();
+ if(mode==='distance'){
+  const flat=lookDirection.clone();flat.y=0;
+  if(flat.lengthSq()<.04)return null;
+  point.copy(viewPosition).addScaledVector(flat.normalize(),distance);point.y=surfacePoint.y;
+ }
+ return point;
+}
+$('placement').onchange=()=>{$('distance-setting').hidden=$('placement').value==='surface';marker.visible=false;$('place').disabled=true;};
+function sampleModel(dt=0,reset=false){
+ if(reset){action?.reset().play();mixer?.setTime(0);}else mixer?.update(dt);
+ // Track the rig's Frame in model coordinates, including animated parents.
+ // Remove horizontal baked travel, retaining vertical bounce and limb motion.
+ model.updateMatrixWorld(true);
+ tracked.copy(tracker.getWorldPosition(new THREE.Vector3()));model.worldToLocal(tracked);
+ const delta=tracked.sub(baseTracker);
+ compensation.position.copy(baseOffset); compensation.position.x-=delta.x;compensation.position.z-=delta.z;
+}
+function updateSize(){if(!model)return;size.scale.setScalar(Number($('height').value)/baseHeight);heading.rotation.y=THREE.MathUtils.degToRad(Number($('facing').value));}
+try{
+ const gltf=await new GLTFLoader().loadAsync('./char1.glb');model=gltf.scene;compensation.add(model);
+ mixer=new THREE.AnimationMixer(model);if(gltf.animations.length){action=mixer.clipAction(gltf.animations[0]);action.play();mixer.setTime(0);}
+ model.updateMatrixWorld(true);
+ const box=new THREE.Box3().setFromObject(model,true),centre=box.getCenter(new THREE.Vector3());
+ baseHeight=box.max.y-box.min.y;if(!(baseHeight>0))throw new Error('The model has no visible height.');
+ baseOffset=new THREE.Vector3(-centre.x,-box.min.y,-centre.z);
+ tracker=model.getObjectByName('Frame')||model.getObjectByName('Root')||model;
+ baseTracker=model.worldToLocal(tracker.getWorldPosition(new THREE.Vector3()));
+ compensation.position.copy(baseOffset);updateSize();ready=true;
+ const supported=!!navigator.xr&&await navigator.xr.isSessionSupported('immersive-ar');
+ $('enter').disabled=!supported;$('enter').textContent=supported?'Start AR':'AR unavailable here';$('fallback').hidden=supported;
+ status(supported?'Choose your distance, then start AR.':'You can preview the character here. Open this page in Chrome on an AR-compatible Android phone for the approach.');
+}catch(e){error('Could not load the character or AR support: '+e.message);$('enter').textContent='Unable to start';}
+$('height').onchange=updateSize;$('facing').onchange=updateSize;
+function resetPlacement(){$('height-trim').hidden=true;$('run').textContent='Run towards me';state='scanning';actor.visible=false;marker.visible=false;$('place').hidden=false;$('place').disabled=true;$('run').hidden=true;$('reset').hidden=true;$('settings').hidden=false;status('Point at a level surface and move the phone slowly.');}
+function restorePreview(){$('height-trim').hidden=true;lift.position.y=0;hitSource?.cancel();hitSource=null;session=null;state='preview';document.body.classList.remove('ar');$('exit').hidden=true;$('enter').hidden=false;$('enter').disabled=false;$('place').hidden=true;$('run').hidden=true;$('reset').hidden=true;$('settings').hidden=false;marker.visible=false;actor.visible=true;actor.position.set(0,0,0);actor.rotation.set(0,0,0);controls.enabled=true;sampleModel(0,true);status('Choose your distance, then start AR.');}
+$('ui').addEventListener('beforexrselect',event=>event.preventDefault());
+$('enter').onclick=async()=>{
+ error('');$('enter').disabled=true;
+ try{
+  session=await navigator.xr.requestSession('immersive-ar',{requiredFeatures:['hit-test','dom-overlay'],domOverlay:{root:$('ui')}});
+  session.addEventListener('end',restorePreview,{once:true});
+  await renderer.xr.setSession(session);
+  const space=await session.requestReferenceSpace('viewer');
+  hitSource=await session.requestHitTestSource({space});
+  controls.enabled=false;document.body.classList.add('ar');$('enter').hidden=true;$('exit').hidden=false;resetPlacement();
+ }catch(e){if(session){try{await session.end();}catch{restorePreview();}}$('enter').disabled=false;error('Could not start AR. Use Chrome on a supported Android phone and allow camera access. '+e.message);}
+};
+$('exit').onclick=()=>session?.end();$('reset').onclick=resetPlacement;
+$('place').onclick=()=>{
+ if(!marker.visible||state!=='scanning')return;
+ // Use the exact position shown by the marker, not a second placement calculation.
+ start.copy(spawnPoint);
+ forward.subVectors(start,viewer);forward.y=0;
+ const distance=forward.length();
+ if(distance<.05){status('Point a little farther away to place the character.');return;}
+ forward.normalize();
+ end.copy(viewer).addScaledVector(forward,Math.min(STOP_DISTANCE,distance));end.y=start.y;
+ actor.position.copy(start);actor.rotation.y=Math.atan2(-forward.x,-forward.z);updateSize();sampleModel(0,true);
+ alignToSurface();$('height-trim').hidden=false;actor.visible=true;marker.visible=true;state='placed';$('place').hidden=true;$('run').hidden=false;$('reset').hidden=false;$('settings').hidden=true;
+ $('run').disabled=distance<=STOP_DISTANCE+.05;
+ status(distance<=STOP_DISTANCE+.05?'Placed on the circle. Place farther than 1 metre away to enable the run.':'Placed on the circle. Check its direction, then start the run.');
+};
+$('run').onclick=()=>{sampleModel(0,true);actor.position.copy(start);marker.visible=false;travelled=0;journey=start.distanceTo(end);wait=1;state='running';$('run').hidden=true;status('Ready…');};
+function stopRun(message){marker.position.set(actor.position.x,actor.position.y+.005,actor.position.z);marker.visible=true;state='stopped';$('run').hidden=false;$('run').textContent='Run again';status(message);}
+renderer.setAnimationLoop((time,frame)=>{
+ const dt=lastTime?Math.min((time-lastTime)/1000,.05):0;lastTime=time;
+ if(ready&&session&&frame){
+  const ref=renderer.xr.getReferenceSpace();const pose=frame.getViewerPose(ref);
+  if(!pose){marker.visible=false;$('place').disabled=true;status('Tracking paused. Move the phone slowly to find the room again.');renderer.render(scene,camera);return;}
+  viewer.set(pose.transform.position.x,pose.transform.position.y,pose.transform.position.z);
+  if(state==='scanning'&&hitSource){
+   marker.visible=false;
+   for(const hit of frame.getHitTestResults(hitSource)){
+    const hp=hit.getPose(ref);if(!hp)continue;hitMatrix.fromArray(hp.transform.matrix);
+    // Only accept upward, level surfaces below the camera.
+    hitPoint.setFromMatrixPosition(hitMatrix);
+    if(hitMatrix.elements[5]<.9||hitPoint.y>viewer.y-.25)continue;
+    forward.set(0,0,-1).applyQuaternion(new THREE.Quaternion().set(pose.transform.orientation.x,pose.transform.orientation.y,pose.transform.orientation.z,pose.transform.orientation.w));
+    const proposed=getSpawnPoint(viewer,forward,hitPoint,$('placement').value,Number($('distance').value));
+    if(!proposed)continue;
+    spawnPoint.copy(proposed);marker.position.copy(spawnPoint);marker.position.y+=.005;marker.visible=true;break;
+   }
+   $('place').disabled=!marker.visible;
+   status(marker.visible?($('placement').value==='surface'?'Place the character on the orange circle.':'Orange circle = starting position. This assumes a level surface all the way there.'):'Point at a level surface and move the phone slowly.');
+  }
+  if(state==='running'){
+   wait-=dt;
+   if(wait<=0){
+    const next=Math.min(journey,travelled+SPEED*dt);candidate.lerpVectors(start,end,next/journey);
+    const nearNow=Math.hypot(actor.position.x-viewer.x,actor.position.z-viewer.z)<=STOP_DISTANCE;
+    const nearNext=Math.hypot(candidate.x-viewer.x,candidate.z-viewer.z)<STOP_DISTANCE;
+    if(nearNow||nearNext){stopRun('Stopped close to you.');}
+    else{travelled=next;actor.position.copy(candidate);sampleModel(dt);status('Here I come…');if(travelled>=journey)stopRun('Arrived. Tap Run again to replay.');}
+   }
+  }
+ }
+ renderer.render(scene,camera);
+});
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+</script>
+</body>
+</html>
