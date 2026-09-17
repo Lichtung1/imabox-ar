@@ -1,7 +1,14 @@
 <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
-<model-viewer id="mv" src="model.glb" ar camera-controls
-  style="width:100%;height:100vh"></model-viewer>
+
+<div style="display:flex;gap:8px;padding:8px;flex-wrap:wrap">
+  <button onclick="show('char1.glb')">Character 1</button>
+  <!-- <button onclick="show('char2.glb')">Character 2</button> -->
+  <!-- <button onclick="show('char3.glb')">Character 3</button> -->
+</div>
+
+<model-viewer id="mv" src="char1.glb" ar autoplay camera-controls
+  style="width:100%;height:85vh"></model-viewer>
+
 <script>
-  const mv = document.getElementById('mv');
-  mv.addEventListener('load', () => mv.play({ repetitions: 1 }));
+  function show(file) { document.getElementById('mv').src = file; }
 </script>
