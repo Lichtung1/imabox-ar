@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {CharacterRig,posedBounds} from './animation.js?v=v11-20260921.1';
-import {approachProgress,stopBeforeViewer} from './movement.js?v=v11-20260921.1';
-import {timeoutSignal} from './platform.js?v=v11-20260921.1';
+import {CharacterRig,posedBounds} from './animation.js?v=v12-20260921.1';
+import {approachProgress,stopBeforeViewer} from './movement.js?v=v12-20260921.1';
+import {timeoutSignal} from './platform.js?v=v12-20260921.1';
 
 // char5's aura is an Emission shader in Blender: black base colour, white
 // emissive at strength 15. What made it read as a glow there -- EEVEE's blend
@@ -42,8 +42,7 @@ export async function mountExperience({config,url,route,art,enter,preview,setSta
     const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),x=>x.toString(16).padStart(2,'0')).join('');
     if(digest!==config.expectedSHA256) {
       // A replacement export must not inherit old timing or clip-name assumptions.
-      console.warn('New export detected: review animation timing, root node and sequence in characters.js.');
-      config.approach=null;config.sequence=null;config.motionNode=null;
+      throw Error('This model has changed. Its animation profile must be reviewed before playback.');
     }
   }
   const gltf=await new GLTFLoader().parseAsync(bytes,new URL('.',url).href);
@@ -59,7 +58,11 @@ export async function mountExperience({config,url,route,art,enter,preview,setSta
   const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
   renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.xr.enabled=true;renderer.xr.setReferenceSpaceType('local');
   renderer.domElement.setAttribute('aria-label',`${config.name} animated 3D preview`);
-  art.replaceChildren(renderer.domElement);
+  // Keep the poster until textures, shaders and the grounded first pose render.
+  renderer.domElement.style.visibility='hidden';
+  renderer.domElement.style.position='absolute';
+  renderer.domElement.style.inset='0';
+  art.append(renderer.domElement);
   const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,config.height*.45,0);controls.enablePan=false;controls.minDistance=config.height;controls.maxDistance=config.height*5;controls.update();controls.saveState();
   const marker=new THREE.Mesh(new THREE.RingGeometry(.14,.19,40).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0xfa601c,side:THREE.DoubleSide}));
   marker.visible=false;scene.add(marker);
@@ -73,6 +76,17 @@ export async function mountExperience({config,url,route,art,enter,preview,setSta
   const hitMatrix=new THREE.Matrix4(),hitPoint=new THREE.Vector3(),orientation=new THREE.Quaternion();
   function sizeCanvas(){if(disposed)return;const w=session?innerWidth:art.clientWidth,h=session?innerHeight:art.clientHeight;camera.aspect=w/Math.max(1,h);camera.updateProjectionMatrix();renderer.setSize(w,Math.max(1,h),false);}
   const resizeObserver=new ResizeObserver(sizeCanvas);resizeObserver.observe(art);addEventListener('resize',sizeCanvas);sizeCanvas();
+  try {
+    await renderer.compileAsync(scene,camera);
+    renderer.render(scene,camera);
+  } catch(error) {
+    resizeObserver.disconnect();removeEventListener('resize',sizeCanvas);
+    controls.dispose();renderer.dispose();renderer.domElement.remove();overlay.remove();
+    throw error;
+  }
+  art.replaceChildren(renderer.domElement);
+  renderer.domElement.style.position='';renderer.domElement.style.inset='';
+  renderer.domElement.style.visibility='';
   function play(){rig.reset();playing=true;travelStopped=false;if(session){rig.actor.position.copy(start);state='playing';marker.visible=false;$('again').hidden=true;message('Watch your character.');}else {preview.textContent='RESTART ANIMATION';setStatus('Playing the full animation.');}}
   preview.hidden=rig.player.duration===0;preview.disabled=false;preview.textContent='PLAY ANIMATION';preview.onclick=play;
   function scan(){state='scanning';playing=false;rig.actor.visible=false;marker.visible=false;validMarkerTime=0;$('place').hidden=false;$('place').disabled=true;$('again').hidden=true;$('rescan').hidden=true;message('Point at a clear, level floor and move your phone slowly.');}
@@ -89,6 +103,8 @@ export async function mountExperience({config,url,route,art,enter,preview,setSta
       // Request directly from the user gesture, before any loading or feature checks.
       const requested=await navigator.xr.requestSession('immersive-ar',{requiredFeatures:['hit-test','dom-overlay'],domOverlay:{root:overlay}});
       session=requested;requested.addEventListener('end',restore,{once:true});
+      // Hide immediately: XR setup can take several frames before scan() runs.
+      rig.actor.visible=false;
       overlay.hidden=false;document.body.classList.add('in-ar');
       await renderer.xr.setSession(requested);
       if(session!==requested)return;
@@ -131,7 +147,7 @@ export async function mountExperience({config,url,route,art,enter,preview,setSta
             marker.position.copy(spawn);marker.position.y+=.005;marker.visible=true;validMarkerTime=performance.now();break;
           }
           $('place').disabled=!marker.visible;
-          message(marker.visible?`The orange circle is the starting point, about ${config.startDistance} m away. Check that the floor is clear and level all the way there, then tap Place & Play.`:'Point at a clear, level floor and move your phone slowly.');
+          message(marker.visible?`The orange circle is the starting point, about ${config.startDistance.toFixed(2)} m away. Check that the floor is clear and level all the way there, then tap Place & Play.`:'Point at a clear, level floor and move your phone slowly.');
         }else if(playing)message(travelStopped?'Finishing the animation…':'Watch your character.');
       }
     }

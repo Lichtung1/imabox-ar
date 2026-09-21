@@ -1,6 +1,15 @@
 // Kept independent from animation playback. A stopped approach never stops time.
 export function approachProgress(time, interval) {
   if (!interval) return 0;
+  if (interval.keyframes) {
+    const points=interval.keyframes;
+    if(time<=points[0][0])return points[0][1];
+    for(let i=1;i<points.length;i++) {
+      const [t,p]=points[i], [previousT,previousP]=points[i-1];
+      if(time<=t)return previousP+(p-previousP)*(time-previousT)/(t-previousT);
+    }
+    return points.at(-1)[1];
+  }
   return Math.max(0,Math.min(1,(time-interval.start)/(interval.end-interval.start)));
 }
 export function stopBeforeViewer(from,to,viewer,radius) {
