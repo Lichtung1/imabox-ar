@@ -1,4 +1,4 @@
-# Why iPhone was broken, and what changed · v10-20260921.1
+# Why iPhone was broken, and what changed · v11-20260921.1
 
 Android and iPhone take completely different routes through this site, and only
 one of them was ever forgiving.
@@ -89,6 +89,45 @@ an `expectedSHA256` for an older export, and a mismatch there wipes `sequence`,
 `approach` and `motionNode` — so even a correct sequence would have been
 discarded. The repo's own test suite reproduced this the moment it was pointed
 at the shipped config.
+
+## The launch played twice on Android
+
+`Fly_Away` is not the second half of the animation. It is the last ~3.7 s of
+`ArmatureAction` exported again as its own clip. Sequencing them one after the
+other -- which is what the first fix here did, to stop `resolveSequence`
+throwing on the overlap -- meant the character took off, reappeared on the
+floor and took off again. iPhone never had this: the USDZ is one baked
+timeline, and all five leave the ground exactly once.
+
+`resolveSequence` now takes an `ignore` list, and char1 and char5 name
+`Fly_Away` in it. Silently dropping a clip is still an error, so an omission
+has to be stated; a name that does not match a clip, or a clip that is both
+ignored and sequenced, is rejected rather than quietly losing animation.
+char1 now plays 10.29 s instead of 14.00 s, char5 9.58 s instead of 13.29 s.
+
+## Walking in toward the viewer
+
+Three of the five have a walk in their animation; two do not. Measured from the
+root motion in each GLB:
+
+| character | model | walks | covers |
+|---|---|---|---|
+| 01 | char4 | 0.00–1.08 s | 1.24 m |
+| 02 | char1 | 1.65–3.87 s | 2.60 m |
+| 04 | char5 | 0.00–1.08 s | 1.24 m |
+| 03, 05 | char3, char2 | never advances | — |
+
+Each walker's `startDistance` is set to `stopDistance` plus exactly the distance
+its feet cover, so the app's approach runs at the authored pace instead of
+sliding the character along the floor. All three come out at about 1.16 m/s,
+which is a good sign the intervals are right.
+
+03 and 05 perform on the spot — there is no root motion to drive an approach
+with. They appear at `startDistance` and stay there, so if 5 m reads as too far
+away, lowering their `startDistance` is the knob.
+
+None of this applies to iPhone. Quick Look anchors where the user taps and
+plays; there is no approach to configure.
 
 ## About the 5 m approach
 

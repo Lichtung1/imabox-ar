@@ -73,7 +73,7 @@ test('every shipped character config actually resolves against its own GLB',asyn
   const settings={...characters.IMABOX_DEFAULTS,...c};
   // This is the check that was missing: a model whose clips drive the same
   // tracks needs an explicit sequence or the whole experience fails to mount.
-  assert.doesNotThrow(()=>resolveSequence(gltf.animations,settings.sequence),`${c.id} (${c.glb})`);
+  assert.doesNotThrow(()=>resolveSequence(gltf.animations,settings.sequence,settings.ignore||[]),`${c.id} (${c.glb})`);
   const rig=new CharacterRig(gltf,settings);
   assert.ok(Math.abs(posedBounds(rig.model).min.y)<1e-6,`${c.id} starts on the floor`);
   assert.ok(Math.abs(posedBounds(rig.model).max.y-settings.height)<1e-6,`${c.id} is the configured height`);
@@ -120,5 +120,36 @@ test('each page loads the model whose artwork matches its poster',async()=>{
   assert.equal(c.glb,expected[c.id],`character ${c.id} should load ${expected[c.id]}`);
   assert.equal(c.usdz,expected[c.id].replace('.glb','.usdz'),`${c.id}: usdz must match its glb`);
   assert.equal(c.image,`assets/imabox--${c.id}.png`,`${c.id}: poster must match its id`);
+ }
+});
+test('a duplicate clip can be ignored, but only when named',()=>{
+ const clips=[clip('full','.position[y]',[0,9],9),clip('tail','.position[y]',[6,9],3)];
+ // Both drive the same track, so nothing can be inferred.
+ assert.throws(()=>resolveSequence(clips,null),/overlap/);
+ // Leaving one out silently is still refused...
+ assert.throws(()=>resolveSequence(clips,[{clips:['full']}]),/omits/);
+ // ...but naming it as a duplicate is allowed, and it does not play.
+ const only=resolveSequence(clips,[{clips:['full']}],['tail']);
+ assert.equal(only.length,1);assert.equal(only[0].duration,9);
+ // Typos and contradictions are caught rather than silently dropping animation.
+ assert.throws(()=>resolveSequence(clips,[{clips:['full']}],['nope']),/not uniquely found/);
+ assert.throws(()=>resolveSequence(clips,[{clips:['full','tail']}],['tail']),/both ignored and sequenced/);
+});
+test('the launch plays once, not twice',async()=>{
+ globalThis.self=globalThis;
+ const loader=new GLTFLoader().register(parser=>{parser.loadTexture=async()=>new THREE.Texture();return {name:'test-textures'};});
+ for(const c of characters.IMABOX_CHARACTERS){
+  const b=fs.readFileSync(new URL('../'+c.glb,import.meta.url));
+  const gltf=await loader.parseAsync(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'');
+  const settings={...characters.IMABOX_DEFAULTS,...c};
+  const rig=new CharacterRig(gltf,settings);
+  // Sample how high the character gets across the whole sequence. A take-off
+  // that is played twice shows up as a second climb after a return to ground.
+  const N=90, heights=[];
+  for(let i=0;i<N;i++){ rig.seek(rig.player.duration*i/(N-1)); heights.push(posedBounds(rig.model).max.y); }
+  const floorish=heights[0]*1.6;
+  let climbs=0, up=false;
+  for(const h of heights){ if(!up&&h>floorish){climbs++;up=true;} else if(up&&h<floorish){up=false;} }
+  assert.ok(climbs<=1,`${c.id} (${c.glb}) leaves the ground ${climbs} times; the launch is playing more than once`);
  }
 });

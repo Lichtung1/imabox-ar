@@ -1,22 +1,39 @@
 import * as THREE from 'three';
 
 // Exported animation order is not an instruction to concatenate alternatives.
-export function resolveSequence(clips, config) {
+//
+// `ignore` names clips that are duplicates of something already playing, and
+// must be listed by hand. char1 and char5 ship a Fly_Away clip that is just the
+// last few seconds of ArmatureAction cut out on its own; playing both makes the
+// character launch, land back on the floor and launch a second time. Omitting a
+// clip silently is still an error -- that is what the check at the bottom is
+// for -- but it has to be possible to say "this one is an alternative take".
+export function resolveSequence(clips, config, ignore) {
   if (!clips.length) return [];
+  const skip = new Set();
+  // Not a default parameter: the defaults in characters.js spell "nothing to
+  // ignore" as null, and a default only fills in for undefined.
+  for (const name of ignore || []) {
+    const matches = clips.filter(c => c.name === name);
+    if (matches.length !== 1) throw Error(`Ignored animation clip not uniquely found: ${name}`);
+    skip.add(name);
+  }
+  const playable = clips.filter(c => !skip.has(c.name));
   let groups = config;
   if (!groups) {
     const occupied = new Set();
-    for (const clip of clips) for (const track of clip.tracks) {
+    for (const clip of playable) for (const track of clip.tracks) {
       if (occupied.has(track.name)) throw Error('Animation clips overlap. Set the intended sequence in characters.js.');
       occupied.add(track.name);
     }
-    groups = [{clips:clips.map(c => c.name)}];
+    groups = [{clips:playable.map(c => c.name)}];
   }
   const seen = new Set();
   const sequence = groups.map(group => {
     const tracks = new Set();
     const selected = group.clips.map(name => {
-      const matches = clips.filter(c => c.name === name);
+      if (skip.has(name)) throw Error(`Clip is both ignored and sequenced: ${name}`);
+      const matches = playable.filter(c => c.name === name);
       if (matches.length !== 1) throw Error(`Animation clip not uniquely found: ${name}`);
       const clip = matches[0];
       if (seen.has(name)) throw Error(`Repeated clip: ${name}`);
@@ -30,7 +47,7 @@ export function resolveSequence(clips, config) {
     if (!selected.length) throw Error('Empty animation group.');
     return {clips:selected, duration:Math.max(...selected.map(c => c.duration))};
   });
-  if (seen.size !== clips.length) throw Error('Sequence omits animation clips. Review every clip before publishing.');
+  if (seen.size !== playable.length) throw Error('Sequence omits animation clips. Review every clip before publishing, and list deliberate omissions in `ignore`.');
   return sequence;
 }
 function snapshot(model) {
@@ -39,8 +56,8 @@ function snapshot(model) {
   return () => { for(const [n,p,q,s,m] of values) { n.position.copy(p);n.quaternion.copy(q);n.scale.copy(s);if(m)n.morphTargetInfluences.splice(0,m.length,...m); } };
 }
 export class SequencePlayer {
-  constructor(model, clips, config) {
-    this.model=model; this.groups=resolveSequence(clips,config);
+  constructor(model, clips, config, ignore) {
+    this.model=model; this.groups=resolveSequence(clips,config,ignore);
     this.duration=this.groups.reduce((sum,g)=>sum+g.duration,0);
     this.mixer=new THREE.AnimationMixer(model);this.restore=snapshot(model);this.reset();
   }
@@ -79,7 +96,7 @@ export class CharacterRig {
     this.actor=new THREE.Group();this.lift=new THREE.Group();this.heading=new THREE.Group();
     this.size=new THREE.Group();this.compensation=new THREE.Group();
     this.actor.add(this.lift);this.lift.add(this.heading);this.heading.add(this.size);this.size.add(this.compensation);this.compensation.add(this.model);
-    this.player=new SequencePlayer(this.model,gltf.animations,config.sequence);
+    this.player=new SequencePlayer(this.model,gltf.animations,config.sequence,config.ignore);
     const bounds=posedBounds(this.model), centre=bounds.getCenter(new THREE.Vector3());
     const height=bounds.max.y-bounds.min.y;
     if(!(height>0 && Number.isFinite(height)))throw Error('Model has no visible height.');

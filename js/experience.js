@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {CharacterRig,posedBounds} from './animation.js?v=v10-20260921.1';
-import {approachProgress,stopBeforeViewer} from './movement.js?v=v10-20260921.1';
-import {timeoutSignal} from './platform.js?v=v10-20260921.1';
+import {CharacterRig,posedBounds} from './animation.js?v=v11-20260921.1';
+import {approachProgress,stopBeforeViewer} from './movement.js?v=v11-20260921.1';
+import {timeoutSignal} from './platform.js?v=v11-20260921.1';
 
 // char5's aura is an Emission shader in Blender: black base colour, white
 // emissive at strength 15. What made it read as a glow there -- EEVEE's blend
