@@ -5,6 +5,33 @@ import {CharacterRig,posedBounds} from './animation.js?v=v9-20260921.1';
 import {approachProgress,stopBeforeViewer} from './movement.js?v=v9-20260921.1';
 import {timeoutSignal} from './platform.js?v=v9-20260921.1';
 
+// char5's aura is an Emission shader in Blender: black base colour, white
+// emissive at strength 15. What made it read as a glow there -- EEVEE's blend
+// mode and bloom -- is viewport state that no exporter writes, so glTF hands us
+// an opaque black sphere that lights up pure white, writes depth, and swallows
+// the character whole. Additive blending with a sane emissive is what the
+// material was always standing in for.
+function unwrapGlowMaterials(scene) {
+  const seen=new Set();
+  scene.traverse(node=>{
+    for(const material of [node.material].flat()) {
+      if(!material||seen.has(material))continue;seen.add(material);
+      const unlit=material.color&&material.color.getHex()===0x000000;
+      const glows=material.emissive&&material.emissive.getHex()!==0x000000;
+      if(!(unlit&&glows))continue;
+      material.transparent=true;
+      material.blending=THREE.AdditiveBlending;
+      material.depthWrite=false;   // never occlude what it is supposed to wrap
+      material.toneMapped=false;
+      // Blender's strength assumes bloom. Additive already brightens, so a
+      // strength of 15 here just clamps every pixel to flat white.
+      material.emissiveIntensity=Math.min(material.emissiveIntensity??1,1);
+      material.opacity=.3;
+      material.needsUpdate=true;
+    }
+  });
+}
+
 export async function mountExperience({config,url,route,art,enter,preview,setStatus}) {
   config={...config};
   // timeoutSignal, not AbortSignal.timeout: the bare call throws on Safari 15.
@@ -20,6 +47,7 @@ export async function mountExperience({config,url,route,art,enter,preview,setSta
     }
   }
   const gltf=await new GLTFLoader().parseAsync(bytes,new URL('.',url).href);
+  unwrapGlowMaterials(gltf.scene);
   const rig=new CharacterRig(gltf,config);
   if(config.approach && !(config.approach.start>=0 && config.approach.end>config.approach.start && config.approach.end<=rig.player.duration+.001))throw Error('The configured running interval is outside this animation.');
   if(!(config.startDistance>config.stopDistance && config.stopDistance>0 && config.height>0))throw Error('Invalid character placement settings.');

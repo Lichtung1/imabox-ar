@@ -105,6 +105,42 @@ original files behaved at 5.67 m wide.
 height as expected rather than as a failure, and asserts that the placement box
 is still the standing pose.
 
+## char5's aura (the power-up ball)
+
+It rendered as a solid white sphere swallowing the character, on **both**
+platforms, and it did so before any of these changes — it only became visible
+once the rest of char5 started working.
+
+In Blender the aura is a bare **Emission** shader: black base colour, white
+emissive at strength 15. What makes that read as a glow there is EEVEE's blend
+mode and bloom, plus a driver on the `aura visibility controler` object. None of
+that is scene data, so none of it exports. What each format got instead:
+
+- **glTF** kept the material but as fully opaque, emissive white ×15, writing
+  depth. A solid white ball that occludes everything behind it.
+- **USD** dropped it entirely. Blender's USD exporter only translates Principled
+  BSDF, so `/root/_materials/Aura` exported as a Material prim **containing no
+  shader at all**, and a mesh bound to an empty material renders default white.
+
+Both are now handled, as close to the intent as each format allows:
+
+- `unwrapGlowMaterials()` in `js/experience.js` spots the signature (black base,
+  non-black emissive), and switches it to additive blending with `depthWrite`
+  off and the emissive strength brought back to 1. Additive plus black base is
+  what an emission-only material is standing in for.
+- `tools/fix-glow-material.py` writes a real `UsdPreviewSurface` into the empty
+  material — emissive white at `opacity 0.3`. Quick Look has no additive
+  blending, so a translucent emissive surface is the closest honest equivalent.
+
+Opacity 0.3 was picked by rendering the power-up at 0.2 / 0.3 / 0.4 / 0.5 and
+choosing the one that still reads as a glow without erasing the artwork. Change
+it in one line in `experience.js` and via `--opacity` on the tool.
+
+**This is a stand-in, not the real aura.** The driver and the blend mode only
+exist in the .blend. Exported properly from source — emission and alpha through
+a Principled BSDF, `alphaMode: BLEND` in glTF, the driver baked to keyframes —
+both platforms would get the actual effect instead of an approximation of it.
+
 ## Two things left for you to decide
 
 **char1's `approach` window (1.75–3.83 s) was measured on an older export.** The
