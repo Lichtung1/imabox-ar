@@ -5,7 +5,17 @@ import fs from 'node:fs';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {SequencePlayer,CharacterRig,posedBounds,resolveSequence} from '../js/animation.js';
 import {approachProgress,stopBeforeViewer} from '../js/movement.js';
-import {platformRoute} from '../js/platform.js';
+import {platformRoute,inAppBrowser,timeoutSignal,available} from '../js/platform.js';
+// Read the shipped configuration rather than restating it. The previous version
+// of this test passed sequence:null for char1, so when char1.glb gained a second
+// clip the test kept testing a model the site never loads.
+const characters=(()=>{
+ const window={};
+ new Function('window',fs.readFileSync(new URL('../characters.js',import.meta.url),'utf8'))(window);
+ return window;
+})();
+const config=id=>({...characters.IMABOX_DEFAULTS,
+ ...characters.IMABOX_CHARACTERS.find(c=>c.id===id)});
 const clip=(name,target,values,duration=2)=>new THREE.AnimationClip(name,duration,[new THREE.NumberKeyframeTrack(target,[0,duration],values)]);
 test('the ending finishes and holds after forward travel stops',()=>{
  const model=new THREE.Group();const player=new SequencePlayer(model,[clip('full','.position[y]',[0,9],9)],null);
@@ -41,7 +51,7 @@ test('real skinned model is grounded/scaled and root travel compensated, includi
  globalThis.self=globalThis;
  const loader=new GLTFLoader().register(parser=>{parser.loadTexture=async()=>new THREE.Texture();return {name:'test-textures'};});
  const b=fs.readFileSync(new URL('../char1.glb',import.meta.url));const gltf=await loader.parseAsync(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'');
- const rig=new CharacterRig(gltf,{height:1,facingDegrees:0,groundOffset:0,motionNode:'Frame',sequence:null});
+ const rig=new CharacterRig(gltf,{...config('01'),height:1,facingDegrees:0,groundOffset:0});
  const initial=posedBounds(rig.model);assert.ok(Math.abs(initial.min.y)<1e-6);assert.ok(Math.abs(initial.max.y-1)<1e-6);
  const anchor=rig.tracker.getWorldPosition(new THREE.Vector3());
  rig.actor.position.set(1,.7,-5);rig.actor.rotation.y=.8;rig.seek(3.5);
@@ -50,4 +60,52 @@ test('real skinned model is grounded/scaled and root travel compensated, includi
  rig.seek(rig.player.duration);const final=posedBounds(rig.model).clone();rig.update(20);
  assert.ok(final.min.distanceTo(posedBounds(rig.model).min)<1e-6);
  rig.actor.position.set(0,0,0);rig.actor.rotation.y=0;rig.reset();assert.ok(Math.abs(posedBounds(rig.model).min.y)<1e-6);
+});
+test('every shipped character config actually resolves against its own GLB',async()=>{
+ globalThis.self=globalThis;
+ const loader=new GLTFLoader().register(parser=>{parser.loadTexture=async()=>new THREE.Texture();return {name:'test-textures'};});
+ for(const c of characters.IMABOX_CHARACTERS){
+  const b=fs.readFileSync(new URL('../'+c.glb,import.meta.url));
+  const gltf=await loader.parseAsync(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'');
+  const settings={...characters.IMABOX_DEFAULTS,...c};
+  // This is the check that was missing: a model whose clips drive the same
+  // tracks needs an explicit sequence or the whole experience fails to mount.
+  assert.doesNotThrow(()=>resolveSequence(gltf.animations,settings.sequence),`${c.id} (${c.glb})`);
+  const rig=new CharacterRig(gltf,settings);
+  assert.ok(Math.abs(posedBounds(rig.model).min.y)<1e-6,`${c.id} starts on the floor`);
+  assert.ok(Math.abs(posedBounds(rig.model).max.y-settings.height)<1e-6,`${c.id} is the configured height`);
+ }
+});
+test('a stale expectedSHA256 would silently discard the sequence, so it must match the file',async()=>{
+ const {createHash}=await import('node:crypto');
+ for(const c of characters.IMABOX_CHARACTERS.filter(c=>c.expectedSHA256)){
+  const digest=createHash('sha256').update(fs.readFileSync(new URL('../'+c.glb,import.meta.url))).digest('hex');
+  assert.equal(digest,c.expectedSHA256,`${c.id}: ${c.glb} does not match its configured hash`);
+ }
+});
+test('asset checks separate "definitely missing" from "could not tell"',async()=>{
+ const original=globalThis.fetch;
+ const reply=(status,type)=>async()=>({ok:status<400,status,headers:{get:()=>type}});
+ globalThis.fetch=reply(200,'model/vnd.usdz+zip');assert.equal(await available('x'),'ok');
+ globalThis.fetch=reply(404,'text/html');assert.equal(await available('x'),'missing');
+ globalThis.fetch=reply(200,'text/html; charset=utf-8');assert.equal(await available('x'),'missing');
+ globalThis.fetch=reply(503,'text/plain');assert.equal(await available('x'),'unknown');
+ globalThis.fetch=async()=>{throw new TypeError('network');};assert.equal(await available('x'),'unknown');
+ globalThis.fetch=original;
+});
+test('the request timeout does not depend on AbortSignal.timeout, absent before Safari 16',()=>{
+ const original=AbortSignal.timeout;
+ try{
+  delete AbortSignal.timeout;
+  const signal=timeoutSignal(50);
+  assert.ok(signal instanceof AbortSignal);assert.equal(signal.aborted,false);
+ } finally {AbortSignal.timeout=original;}
+ assert.ok(timeoutSignal(50) instanceof AbortSignal);
+});
+test('social in-app browsers are routed to Safari instead of a Quick Look link that does nothing',()=>{
+ const ios='Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15';
+ assert.equal(platformRoute(ios+' Instagram 300.0.0',' iPhone',1,true,false),'apple-inapp');
+ assert.equal(platformRoute(ios+' [FBAN/FBIOS]','iPhone',1,true,false),'apple-inapp');
+ assert.equal(platformRoute(ios+' Safari/604.1','iPhone',1,true,false),'apple');
+ assert.equal(inAppBrowser('Android Chrome/145'),false);
 });

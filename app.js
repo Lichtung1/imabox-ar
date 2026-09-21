@@ -21,21 +21,25 @@ async function init() {
  const asset=path=>{const url=new URL(path,siteRoot);url.searchParams.set('v',c.assetRevision);return url.href;};
  const glbCheck=available(asset(c.glb)),usdzCheck=available(asset(c.usdz));
  const route=await detectPlatform();
- const hasUSDZ=route==='apple'?await usdzCheck:false;
+ const usdzState=route==='apple'?await usdzCheck:'unknown';
  if(route==='apple') {
-  if(hasUSDZ){$('apple').href=asset(c.usdz)+'#allowsContentScaling=0&canonicalWebPageURL='+encodeURIComponent(location.href);$('apple').hidden=false;$('status').textContent='Tap View in AR, then choose a clear surface. Your iPhone handles placement.';}
+  // Only a definite 404 hides the button. A failed check is not proof the file
+  // is gone, and hiding AR on a dropped HEAD request left iPhone visitors with
+  // no way in at all. The canonical URL is sent without the cache-busting query
+  // so Quick Look's share sheet points at a clean page address.
+  if(usdzState!=='missing'){$('apple').href=asset(c.usdz)+'#canonicalWebPageURL='+location.origin+location.pathname;$('apple').hidden=false;$('status').textContent='Tap View in AR, then point at the floor and drag your character where you want it.';}
   else {$('status').textContent='This character’s iPhone AR version is not available yet.';$('retry').hidden=false;}
  } else if(route==='webxr') {
   $('status').textContent='Loading your character…';
  } else {
-  $('status').textContent=route==='apple-browser'?'Open this page in Safari on your iPhone or iPad for AR.':route==='android-browser'?'Open this page in Chrome on your Android phone for AR.':route==='android-unavailable'?'AR is unavailable here. Open in Chrome on an ARCore-compatible phone, with Google Play Services for AR installed.':'Open on your phone to bring this character into your space.';
+  $('status').textContent=route==='apple-inapp'?'Tap the ••• menu and choose Open in Safari — AR does not run inside this app’s browser.':route==='apple-browser'?'Open this page in Safari on your iPhone or iPad for AR.':route==='android-browser'?'Open this page in Chrome on your Android phone for AR.':route==='android-unavailable'?'AR is unavailable here. Open in Chrome on an ARCore-compatible phone, with Google Play Services for AR installed.':'Open on your phone to bring this character into your space.';
   $('share').hidden=false;
   try{const {default:QR}=await import(versioned('vendor/qrcode.js'));await QR.toCanvas($('qr'),location.href,{width:180,margin:2});}catch{$('qr').hidden=true;}
  }
  $('copy').onclick=async()=>{try{await navigator.clipboard.writeText(location.href);$('copy').textContent='LINK COPIED';}catch{$('preview-status').textContent='Copy this page’s address from the address bar.';}};
  $('retry').onclick=()=>location.reload();
- const hasGLB=await glbCheck;
- if(!hasGLB) {
+ const glbState=await glbCheck;
+ if(glbState==='missing') {
   $('preview-status').textContent='3D preview coming soon.';
   if(route==='webxr'){$('retry').hidden=false;$('status').textContent='This character’s Android and 3D version is not available yet.';}
   return;
@@ -49,7 +53,7 @@ async function init() {
    if(route==='webxr')$('status').textContent='Choose a clear, level floor with room for the approach.';
   }catch(error){console.error(error);$('preview-status').textContent=`The 3D experience could not load. ${error.message}`;$('retry').hidden=false;}
  };
- if(route==='apple'||route==='apple-browser'){$('preview').hidden=false;$('preview').textContent='EXPLORE IN 3D';$('preview').onclick=loadPreview;}
+ if(route==='apple'||route==='apple-browser'||route==='apple-inapp'){$('preview').hidden=false;$('preview').textContent='EXPLORE IN 3D';$('preview').onclick=loadPreview;}
  else await loadPreview();
 }
 init().catch(error=>{console.error(error);const target=document.querySelector('#status')||document.querySelector('#gallery');target.textContent='We couldn’t load the characters. Refresh to try again.';});

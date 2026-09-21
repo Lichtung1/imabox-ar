@@ -1,12 +1,14 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {CharacterRig,posedBounds} from './animation.js?v=v7-20260921.1';
-import {approachProgress,stopBeforeViewer} from './movement.js?v=v7-20260921.1';
+import {CharacterRig,posedBounds} from './animation.js?v=v9-20260921.1';
+import {approachProgress,stopBeforeViewer} from './movement.js?v=v9-20260921.1';
+import {timeoutSignal} from './platform.js?v=v9-20260921.1';
 
 export async function mountExperience({config,url,route,art,enter,preview,setStatus}) {
   config={...config};
-  const response=await fetch(url,{signal:AbortSignal.timeout(45000)});
+  // timeoutSignal, not AbortSignal.timeout: the bare call throws on Safari 15.
+  const response=await fetch(url,{signal:timeoutSignal(45000)});
   if(!response.ok)throw Error(`Model request failed (${response.status}).`);
   const bytes=await response.arrayBuffer();
   if(config.expectedSHA256) {
