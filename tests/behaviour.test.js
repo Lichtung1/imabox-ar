@@ -50,8 +50,11 @@ test('routes Apple independently from GLB and catches iPad desktop user agents',
 test('real skinned model is grounded/scaled and root travel compensated, including replay/final pose',async()=>{
  globalThis.self=globalThis;
  const loader=new GLTFLoader().register(parser=>{parser.loadTexture=async()=>new THREE.Texture();return {name:'test-textures'};});
+ // Look the settings up by file, not by id: char1.glb is not character 01.
+ const settings=characters.IMABOX_CHARACTERS.find(c=>c.glb==='char1.glb');
+ assert.ok(settings,'no character loads char1.glb');
  const b=fs.readFileSync(new URL('../char1.glb',import.meta.url));const gltf=await loader.parseAsync(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'');
- const rig=new CharacterRig(gltf,{...config('01'),height:1,facingDegrees:0,groundOffset:0});
+ const rig=new CharacterRig(gltf,{...config(settings.id),height:1,facingDegrees:0,groundOffset:0});
  const initial=posedBounds(rig.model);assert.ok(Math.abs(initial.min.y)<1e-6);assert.ok(Math.abs(initial.max.y-1)<1e-6);
  const anchor=rig.tracker.getWorldPosition(new THREE.Vector3());
  rig.actor.position.set(1,.7,-5);rig.actor.rotation.y=.8;rig.seek(3.5);
@@ -108,4 +111,14 @@ test('social in-app browsers are routed to Safari instead of a Quick Look link t
  assert.equal(platformRoute(ios+' [FBAN/FBIOS]','iPhone',1,true,false),'apple-inapp');
  assert.equal(platformRoute(ios+' Safari/604.1','iPhone',1,true,false),'apple');
  assert.equal(inAppBrowser('Android Chrome/145'),false);
+});
+test('each page loads the model whose artwork matches its poster',async()=>{
+ // The model files are not numbered like the posters, so this pairing is easy
+ // to get wrong and impossible to notice from the code alone. Pin it.
+ const expected={'01':'char4.glb','02':'char1.glb','03':'char3.glb','04':'char5.glb','05':'char2.glb'};
+ for(const c of characters.IMABOX_CHARACTERS){
+  assert.equal(c.glb,expected[c.id],`character ${c.id} should load ${expected[c.id]}`);
+  assert.equal(c.usdz,expected[c.id].replace('.glb','.usdz'),`${c.id}: usdz must match its glb`);
+  assert.equal(c.image,`assets/imabox--${c.id}.png`,`${c.id}: poster must match its id`);
+ }
 });

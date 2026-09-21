@@ -1,4 +1,4 @@
-# Why iPhone was broken, and what changed · v9-20260921.1
+# Why iPhone was broken, and what changed · v10-20260921.1
 
 Android and iPhone take completely different routes through this site, and only
 one of them was ever forgiving.
@@ -36,6 +36,29 @@ in the link meant they could not even pinch it down to see what it was.
 char3 was the worst: its USDZ had no `UsdSkelAnimation` whatsoever and its rest
 pose was the final frame of the launch, so it was a static model hanging seven
 metres over the spot you tapped.
+
+## The pages were showing the wrong characters
+
+Separate from the AR work, and true on every platform: `charN.glb` does not
+hold the character in `imabox--0N.png`. Only character 03 was ever paired
+correctly. The torso textures baked into each model say which is which:
+
+| page | poster | used to load | actually is |
+|---|---|---|---|
+| 01 | green | char1 (orange) | **char4** |
+| 02 | orange | char2 (red "21") | **char1** |
+| 03 | blue | char3 | char3 — correct |
+| 04 | pink | char4 (green) | **char5** |
+| 05 | red "21" | char5 (pink) | **char2** |
+
+The poster numbering is the real one: the accent colours in `characters.js`
+were written against it (01 `#228442` green, 02 `#fa601c` orange, and so on),
+so the file names are what is out of step. Each entry now points at whichever
+model carries that character's artwork, and the per-model settings -- sequence,
+SHA, approach -- travel with the model rather than staying on the id. No files
+were renamed, so nothing else has to change.
+
+A test pins the pairing, because it cannot be spotted by reading the code.
 
 ## What was wrong with the code
 
