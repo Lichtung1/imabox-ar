@@ -1,13 +1,6 @@
 import * as THREE from 'three';
 
-// Exported animation order is not an instruction to concatenate alternatives.
-//
-// `ignore` names clips that are duplicates of something already playing, and
-// must be listed by hand. char1 and char5 ship a Fly_Away clip that is just the
-// last few seconds of ArmatureAction cut out on its own; playing both makes the
-// character launch, land back on the floor and launch a second time. Omitting a
-// clip silently is still an error -- that is what the check at the bottom is
-// for -- but it has to be possible to say "this one is an alternative take".
+// Validate explicitly grouped clips and deliberate omissions.
 export function resolveSequence(clips, config, ignore) {
   if (!clips.length) return [];
   const skip = new Set();
@@ -88,11 +81,14 @@ export class SequencePlayer {
 export function posedBounds(model) {
   let root=model;while(root.parent)root=root.parent;root.updateMatrixWorld(true);
   model.traverse(n=>{if(n.isSkinnedMesh)n.skeleton.update();});
-  return new THREE.Box3().setFromObject(model,true);
+  const bounds=new THREE.Box3();
+  model.traverse(n=>{if(n.isMesh&&!n.userData.excludeFromGrounding)bounds.expandByObject(n,true);});
+  return bounds;
 }
 export class CharacterRig {
   constructor(gltf, config) {
     this.config=config;this.model=gltf.scene;
+    this.model.traverse(n=>{if((config.effectNodes||[]).includes(n.name))n.userData.excludeFromGrounding=true;});
     this.actor=new THREE.Group();this.lift=new THREE.Group();this.heading=new THREE.Group();
     this.size=new THREE.Group();this.compensation=new THREE.Group();
     this.actor.add(this.lift);this.lift.add(this.heading);this.heading.add(this.size);this.size.add(this.compensation);this.compensation.add(this.model);

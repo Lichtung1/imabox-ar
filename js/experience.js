@@ -1,16 +1,11 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {CharacterRig,posedBounds} from './animation.js?v=v12-20260921.1';
-import {approachProgress,stopBeforeViewer} from './movement.js?v=v12-20260921.1';
-import {timeoutSignal} from './platform.js?v=v12-20260921.1';
+import {CharacterRig,posedBounds} from './animation.js?v=v13-20260922.1';
+import {approachProgress,stopBeforeViewer} from './movement.js?v=v13-20260922.1';
+import {timeoutSignal} from './platform.js?v=v13-20260922.1';
 
-// char5's aura is an Emission shader in Blender: black base colour, white
-// emissive at strength 15. What made it read as a glow there -- EEVEE's blend
-// mode and bloom -- is viewport state that no exporter writes, so glTF hands us
-// an opaque black sphere that lights up pure white, writes depth, and swallows
-// the character whole. Additive blending with a sane emissive is what the
-// material was always standing in for.
+// Render the emissive aura without obscuring the character.
 function unwrapGlowMaterials(scene) {
   const seen=new Set();
   scene.traverse(node=>{

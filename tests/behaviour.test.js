@@ -153,3 +153,56 @@ test('the launch plays once, not twice',async()=>{
   assert.ok(climbs<=1,`${c.id} (${c.glb}) leaves the ground ${climbs} times; the launch is playing more than once`);
  }
 });
+test('measured opening approaches move once and finish at the stopping distance',()=>{
+ for(const c of characters.IMABOX_CHARACTERS){
+  const a=c.approach,p=a.keyframes;
+  assert.equal(p[0][0],0);assert.equal(p[0][1],0);assert.equal(p.at(-1)[1],1);
+  for(let i=1;i<p.length;i++){assert.ok(p[i][0]>p[i-1][0]);assert.ok(p[i][1]>=p[i-1][1]);}
+  assert.ok(approachProgress(.5,a)>0,`${c.id} includes opening motion`);
+  assert.equal(approachProgress(a.end+20,a),1);
+  const settings=config(c.id),from={x:0,z:-settings.startDistance},viewer={x:0,z:0};
+  let position={...from},stopped=false;
+  for(let t=0;t<a.end+.1;t+=1/60){
+   const candidate={x:0,z:-settings.startDistance+(settings.startDistance-settings.stopDistance)*approachProgress(t,a)};
+   if(!stopped){const r=stopBeforeViewer(position,candidate,viewer,settings.stopDistance);position.z+=(candidate.z-position.z)*r.fraction;stopped=r.stopped;}
+   assert.ok(position.z<=-settings.stopDistance+1e-8);
+  }
+  assert.ok(Math.abs(position.z+settings.stopDistance)<1e-6);
+ }
+});
+test('every USDZ matches its recorded hash and all public routes exist',async()=>{
+ const {createHash}=await import('node:crypto');
+ for(const c of characters.IMABOX_CHARACTERS){
+  const digest=createHash('sha256').update(fs.readFileSync(new URL('../'+c.usdz,import.meta.url))).digest('hex');
+  assert.equal(digest,c.expectedUSDZSHA256);
+  const html=fs.readFileSync(new URL(`../characters/${c.id}/index.html`,import.meta.url),'utf8');
+  assert.ok(html.includes(`data-character="${c.id}"`));
+  assert.ok(html.includes(characters.IMABOX_BUILD));
+  assert.ok(fs.existsSync(new URL('../'+c.image,import.meta.url)));
+ }
+ assert.ok(fs.existsSync(new URL('../index.html',import.meta.url)));
+});
+test('new exports contain exactly one complete scene timeline',async()=>{
+ globalThis.self=globalThis;
+ const loader=new GLTFLoader().register(p=>{p.loadTexture=async()=>new THREE.Texture();return {name:'test-textures'};});
+ for(const c of characters.IMABOX_CHARACTERS){
+  const b=fs.readFileSync(new URL('../'+c.glb,import.meta.url));
+  const g=await loader.parseAsync(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'');
+  assert.deepEqual(g.animations.map(a=>a.name),['Scene']);
+  assert.ok(Math.abs(g.animations[0].duration-c.animationDuration)<1e-5);
+  const rig=new CharacterRig(g,config(c.id));rig.seek(rig.player.duration);
+  const before=posedBounds(rig.model).clone();rig.update(100);
+  assert.ok(before.min.distanceTo(posedBounds(rig.model).min)<1e-6);
+ }
+});
+test('char5 aura is hidden initially, deforms during its visible interval, and disappears before the ending',async()=>{
+ globalThis.self=globalThis;
+ const loader=new GLTFLoader().register(p=>{p.loadTexture=async()=>new THREE.Texture();return {name:'test-textures'};});
+ const b=fs.readFileSync(new URL('../char5.glb',import.meta.url));const g=await loader.parseAsync(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'');
+ const rig=new CharacterRig(g,config('04')),aura=rig.model.getObjectByName('Aura_Baked');
+ assert.ok(aura?.isMesh);assert.ok(aura.userData.excludeFromGrounding);assert.equal(aura.scale.length(),0);
+ rig.seek(75/24);assert.ok(aura.scale.length()>0);const first=aura.getVertexPosition(100,new THREE.Vector3());
+ rig.seek(100/24);const second=aura.getVertexPosition(100,new THREE.Vector3());assert.ok(first.distanceTo(second)>1e-5);
+ rig.seek(233/24);assert.equal(aura.scale.length(),0);
+ assert.ok(rig.player.duration>233/24);
+});
