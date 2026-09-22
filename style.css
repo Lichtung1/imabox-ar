@@ -105,7 +105,7 @@ model-viewer {
     monospace;
   text-transform: uppercase;
   letter-spacing: 2px;
-  margin: 0 0 6px;
+  margin: 0 0 22px;
 }
 button {
   font-size: 12px;
@@ -176,6 +176,7 @@ button:focus-visible {
   display: none !important;
 }
 .build {
+  display: none;
   text-align: center;
   font:
     10px Courier,
@@ -190,40 +191,78 @@ button:focus-visible {
   height: 100%;
   touch-action: none;
 }
-/* One centred row, so START AR / View in AR / TRY AGAIN line up whatever mix
-   is showing. Without it the AR link (with its 36px thumbnail) sat on a
-   different baseline from the text buttons beside it on iPad. */
+/* One centred row, so the AR button and TRY AGAIN line up whatever mix is
+   showing (they sat on different baselines on iPad before). */
 #launch {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   align-items: center;
   gap: 8px 16px;
+  margin-bottom: 22px;
 }
 #launch > [hidden] {
   display: none;
 }
-.quicklook {
+/* The AR call-to-action: the logo's orange, black type and border, and a hard
+   offset shadow in the spirit of the drawings. The same VIEW IN AR button on
+   Apple (a Quick Look link) and Android (starts WebXR), and PLACE & PLAY
+   inside AR, so it reads the same everywhere. */
+:root {
+  --imabox-orange: #f26122;
+}
+.cta,
+#xr-ui #place {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  text-decoration: underline;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 14px 28px;
+  background: var(--imabox-orange);
+  color: #000;
+  border: 2px solid #000;
+  border-radius: 0;
+  box-shadow: 4px 4px 0 #000;
   font:
-    12px Courier,
+    700 14px Courier,
     'Courier New',
     monospace;
+  letter-spacing: 3px;
   text-transform: uppercase;
-  letter-spacing: 2px;
-  text-underline-offset: 4px;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 0.08s ease,
+    box-shadow 0.08s ease;
 }
-.quicklook:after {
-  content: 'VIEW IN AR';
+.cta:hover {
+  background: #ff7536;
 }
-.quicklook img {
-  height: 36px;
-  width: 36px;
-  object-fit: contain;
+.cta:active,
+#xr-ui #place:active {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 #000;
+}
+.cta:disabled,
+#xr-ui #place:disabled {
+  background: #f7b393;
+  color: #555;
+  border-color: #555;
+  box-shadow: 4px 4px 0 #555;
+  cursor: default;
+  transform: none;
+}
+/* Safari only hands the link to Quick Look when it wraps an <img>, so the
+   AR icon is that image; the label comes from CSS. */
+.cta img {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+a.cta::after {
+  content: 'View in AR';
 }
 #share {
   margin: 24px auto 0;
@@ -246,11 +285,15 @@ button:focus-visible {
   pointer-events: auto;
   background: #fffffff2;
   color: #000;
-  border: 1px solid #111;
-  padding: 16px;
+  border: 2px solid #000;
+  padding: 12px 16px;
   max-width: 440px;
   width: 100%;
   margin: 0 auto;
+}
+/* While the character plays there is nothing to read: hide the empty panel. */
+#xr-ui .xr-panel:has(#xr-status:empty) {
+  visibility: hidden;
 }
 #xr-ui p {
   font:
@@ -261,14 +304,12 @@ button:focus-visible {
 #xr-ui button {
   background: #fff;
 }
-#xr-ui #place {
-  background: #fa601c;
-  text-decoration: none;
-}
 #xr-ui .xr-actions {
   display: flex;
   justify-content: center;
+  align-items: center;
   flex-wrap: wrap;
+  gap: 8px 12px;
 }
 body.in-ar #art canvas {
   position: fixed;
@@ -276,11 +317,6 @@ body.in-ar #art canvas {
   width: 100vw;
   height: 100dvh;
   z-index: 5;
-}
-#xr-ui .xr-build {
-  font-size: 10px;
-  color: #666;
-  margin-top: 8px;
 }
 @media (prefers-reduced-motion: reduce) {
   * {

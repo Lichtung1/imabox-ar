@@ -2,7 +2,7 @@
 
 Five animated characters, a gallery, and platform-specific AR. Hosted on GitHub Pages.
 
-Build: `v15-20260922.1`
+Build: `v16-20260922.1`
 
 ## Models
 

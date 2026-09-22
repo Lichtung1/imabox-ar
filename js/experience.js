@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { CharacterRig, posedBounds } from './animation.js?v=v15-20260922.1';
-import { approachProgress, stopBeforeViewer } from './movement.js?v=v15-20260922.1';
-import { timeoutSignal } from './platform.js?v=v15-20260922.1';
+import { CharacterRig, posedBounds } from './animation.js?v=v16-20260922.1';
+import { approachProgress, stopBeforeViewer } from './movement.js?v=v16-20260922.1';
+import { timeoutSignal } from './platform.js?v=v16-20260922.1';
 
 // Render the emissive aura without obscuring the character.
 function unwrapGlowMaterials(scene) {
@@ -86,7 +86,7 @@ export async function mountExperience({ config, url, route, art, enter, setStatu
   controls.saveState();
   const marker = new THREE.Mesh(
     new THREE.RingGeometry(0.14, 0.19, 40).rotateX(-Math.PI / 2),
-    new THREE.MeshBasicMaterial({ color: 0xfa601c, side: THREE.DoubleSide }),
+    new THREE.MeshBasicMaterial({ color: 0xf26122, side: THREE.DoubleSide }),
   );
   marker.visible = false;
   scene.add(marker);
@@ -96,7 +96,6 @@ export async function mountExperience({ config, url, route, art, enter, setStatu
   overlay.innerHTML = `
     <div class="xr-panel">
       <p id="xr-status" role="status"></p>
-      <p class="xr-build">IMABOX · ${window.IMABOX_BUILD}</p>
     </div>
     <div class="xr-panel xr-actions">
       <button id="place" disabled>PLACE & PLAY</button>
@@ -162,7 +161,7 @@ export async function mountExperience({ config, url, route, art, enter, setStatu
       state = 'playing';
       marker.visible = false;
       $('again').hidden = true;
-      message('Watch your character.');
+      message('');
     }
   }
   // The animation plays only in AR, at the artist's request. The page preview
@@ -177,7 +176,7 @@ export async function mountExperience({ config, url, route, art, enter, setStatu
     $('place').disabled = true;
     $('again').hidden = true;
     $('rescan').hidden = true;
-    message('Point at a clear, level floor and move your phone slowly.');
+    message('Point your phone at the floor and move it slowly.');
   }
   function restore() {
     hitSource?.cancel();
@@ -235,10 +234,8 @@ export async function mountExperience({ config, url, route, art, enter, setStatu
           restore();
         }
       } else restore();
-      setStatus(
-        'Could not start AR. Use Chrome on a supported Android phone and allow camera access. ' +
-          error.message,
-      );
+      console.error(error);
+      setStatus('AR could not start. Allow camera access and try again.');
     }
   };
   $('exit').onclick = () => session?.end();
@@ -253,7 +250,7 @@ export async function mountExperience({ config, url, route, art, enter, setStatu
     forward.y = 0;
     const distance = forward.length();
     if (distance <= config.stopDistance + 0.05) {
-      message('Point farther away to leave room for the approach.');
+      message('Point a little farther away.');
       return;
     }
     forward.normalize();
@@ -278,7 +275,7 @@ export async function mountExperience({ config, url, route, art, enter, setStatu
         marker.visible = false;
         validMarkerTime = 0;
         $('place').disabled = true;
-        message('Tracking paused. Move your phone slowly to find the room again.');
+        message('Move your phone slowly to find the floor again.');
       } else {
         viewer.set(pose.transform.position.x, pose.transform.position.y, pose.transform.position.z);
         if (state === 'scanning' && hitSource) {
@@ -309,11 +306,10 @@ export async function mountExperience({ config, url, route, art, enter, setStatu
           $('place').disabled = !marker.visible;
           message(
             marker.visible
-              ? `The orange circle is the starting point, about ${config.startDistance.toFixed(2)} m away. Check that the floor is clear and level all the way there, then tap Place & Play.`
-              : 'Point at a clear, level floor and move your phone slowly.',
+              ? 'Tap Place & Play when the orange circle is on a clear spot.'
+              : 'Point your phone at the floor and move it slowly.',
           );
-        } else if (playing)
-          message(travelStopped ? 'Finishing the animation…' : 'Watch your character.');
+        } else if (playing) message('');
       }
     }
     if (playing && tracked && !document.hidden) {
@@ -330,7 +326,7 @@ export async function mountExperience({ config, url, route, art, enter, setStatu
         if (session) {
           state = 'finished';
           $('again').hidden = false;
-          message('Animation complete.');
+          message('');
         }
       }
     }

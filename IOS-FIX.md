@@ -265,7 +265,7 @@ white at opacity 0.25, set with `--opacity`.
 
 **No PLAY ANIMATION on character pages.** At the artist's request, the
 animation is shown only in AR. The page preview is a still model you can drag
-around; Android shows START AR and iPhone shows View in AR.
+around; every phone shows one VIEW IN AR button.
 
 ## v15 · 22 September 2026
 
@@ -291,3 +291,17 @@ button row is now a centred flex row, so buttons line up on iPad.
 **Readable source.** The HTML, CSS and site JavaScript were minified onto a
 few long lines. They are now formatted with Prettier (`.prettierrc.json`).
 Vendor libraries in `vendor/` are left as shipped.
+
+## v16 · 22 September 2026
+
+**One AR button.** VIEW IN AR on every phone: the logo's orange (`#f26122`),
+black Courier type and border, a hard offset shadow, and a simple cube icon
+(`assets/ar-icon.svg`). On Apple it is
+the Quick Look link; on Android it starts WebXR. PLACE & PLAY inside AR uses
+the same style.
+
+**No diagnostics for visitors.** The build number is gone from the AR screen
+and the page footer. It is still logged to the console, and `?debug` in the
+address shows it on the page. The AR screen shows one short instruction
+instead of distances and setup notes, and hides the panel while the character
+plays.

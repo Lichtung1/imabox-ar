@@ -6,10 +6,16 @@ const versioned = (path) => {
   url.searchParams.set('v', build);
   return url.href;
 };
-const footer = document.createElement('footer');
-footer.className = 'build';
-footer.textContent = `IMABOX · ${build}`;
-document.body.append(footer);
+// The build number is for us, not visitors: in the console always, and on the
+// page only with ?debug in the address.
+console.info(`IMABOX ${build}`);
+if (new URLSearchParams(location.search).has('debug')) {
+  const footer = document.createElement('footer');
+  footer.className = 'build';
+  footer.textContent = `IMABOX · ${build}`;
+  footer.style.display = 'block';
+  document.body.append(footer);
+}
 async function init() {
   const chars = window.IMABOX_CHARACTERS,
     detail = document.querySelector('[data-character]');
@@ -55,9 +61,9 @@ async function init() {
       <div class="character-info">
         <h1>${c.name}</h1>
         <div id="launch">
-          <button id="enter" hidden disabled>START AR</button>
-          <a id="apple" class="quicklook" rel="ar" hidden aria-label="View ${c.name} in AR">
-            <img src="${localUrl(c.image)}" alt="View in AR">
+          <button id="enter" class="cta" hidden disabled><img src="${localUrl('assets/ar-icon.svg')}" alt="">VIEW IN AR</button>
+          <a id="apple" class="cta" rel="ar" hidden aria-label="View ${c.name} in AR">
+            <img src="${localUrl('assets/ar-icon.svg')}" alt="">
           </a>
           <button id="retry" hidden>TRY AGAIN</button>
         </div>
@@ -156,7 +162,7 @@ async function init() {
       setStatus: (text) => ($('preview-status').textContent = text),
     });
     if (route === 'webxr')
-      $('status').textContent = 'Choose a clear, level floor with room for the approach.';
+      $('status').textContent = 'Find open floor space, then tap View in AR.';
   } catch (error) {
     console.error(error);
     if (apple) return;
