@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {CharacterRig,posedBounds} from './animation.js?v=v13-20260922.1';
-import {approachProgress,stopBeforeViewer} from './movement.js?v=v13-20260922.1';
-import {timeoutSignal} from './platform.js?v=v13-20260922.1';
+import {CharacterRig,posedBounds} from './animation.js?v=v14-20260922.1';
+import {approachProgress,stopBeforeViewer} from './movement.js?v=v14-20260922.1';
+import {timeoutSignal} from './platform.js?v=v14-20260922.1';
 
 // Render the emissive aura without obscuring the character.
 function unwrapGlowMaterials(scene) {
@@ -52,7 +52,7 @@ export async function mountExperience({config,url,route,art,enter,preview,setSta
   camera.position.set(0,config.height*.65,config.height*2.5);
   const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
   renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.xr.enabled=true;renderer.xr.setReferenceSpaceType('local');
-  renderer.domElement.setAttribute('aria-label',`${config.name} animated 3D preview`);
+  renderer.domElement.setAttribute('aria-label',`${config.name} 3D preview`);
   // Keep the poster until textures, shaders and the grounded first pose render.
   renderer.domElement.style.visibility='hidden';
   renderer.domElement.style.position='absolute';
@@ -82,14 +82,16 @@ export async function mountExperience({config,url,route,art,enter,preview,setSta
   art.replaceChildren(renderer.domElement);
   renderer.domElement.style.position='';renderer.domElement.style.inset='';
   renderer.domElement.style.visibility='';
-  function play(){rig.reset();playing=true;travelStopped=false;if(session){rig.actor.position.copy(start);state='playing';marker.visible=false;$('again').hidden=true;message('Watch your character.');}else {preview.textContent='RESTART ANIMATION';setStatus('Playing the full animation.');}}
-  preview.hidden=rig.player.duration===0;preview.disabled=false;preview.textContent='PLAY ANIMATION';preview.onclick=play;
+  function play(){rig.reset();playing=true;travelStopped=false;if(session){rig.actor.position.copy(start);state='playing';marker.visible=false;$('again').hidden=true;message('Watch your character.');}}
+  // The artist wants the animation seen only in AR. The page preview is a
+  // still, first-frame model the visitor can drag around -- no play control.
+  preview.hidden=true;preview.onclick=null;
   function scan(){state='scanning';playing=false;rig.actor.visible=false;marker.visible=false;validMarkerTime=0;$('place').hidden=false;$('place').disabled=true;$('again').hidden=true;$('rescan').hidden=true;message('Point at a clear, level floor and move your phone slowly.');}
   function restore(){
     hitSource?.cancel();hitSource=null;session=null;state='preview';playing=false;lastTime=null;
     document.body.classList.remove('in-ar');overlay.hidden=true;marker.visible=false;
     rig.actor.visible=true;rig.actor.position.set(0,0,0);rig.actor.rotation.set(0,0,0);rig.reset();
-    controls.enabled=true;controls.reset();enter.disabled=false;preview.textContent='PLAY ANIMATION';sizeCanvas();
+    controls.enabled=true;controls.reset();enter.disabled=false;sizeCanvas();
   }
   enter.hidden=route!=='webxr';enter.disabled=false;
   enter.onclick=async()=>{
@@ -155,11 +157,11 @@ export async function mountExperience({config,url,route,art,enter,preview,setSta
         travelStopped=step.stopped||rig.player.time>=config.approach.end;
       }
       // Animation completion is independent of position and approach state.
-      if(rig.player.complete){playing=false;preview.textContent='PLAY AGAIN';if(session){state='finished';$('again').hidden=false;message('Animation complete.');}else setStatus('Animation complete. Drag to look around, or play again.');}
+      if(rig.player.complete){playing=false;if(session){state='finished';$('again').hidden=false;message('Animation complete.');}}
     }
     renderer.render(scene,camera);
   });
-  setStatus('Drag to look around, or play the animation.');
+  setStatus('Drag to look around.');
   if(new URLSearchParams(location.search).has('debug'))window.imaboxDebug={rig,scene,renderer,play,posedBounds,get state(){return state;}};
   addEventListener('pagehide',()=>{disposed=true;renderer.setAnimationLoop(null);resizeObserver.disconnect();removeEventListener('resize',sizeCanvas);controls.dispose();renderer.dispose();hitSource?.cancel();session?.end().catch(()=>{});},{once:true});
 }

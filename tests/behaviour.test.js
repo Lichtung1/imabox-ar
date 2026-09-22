@@ -206,3 +206,21 @@ test('char5 aura is hidden initially, deforms during its visible interval, and d
  rig.seek(233/24);assert.equal(aura.scale.length(),0);
  assert.ok(rig.player.duration>233/24);
 });
+test('char3 spins on its head: the head stays planted while the body turns around it',async()=>{
+ // The spin pivots on the Root bone; the travel is on the Armature object.
+ // Tracking Frame (the hips) pinned the hips instead, and the head skidded
+ // around a ~18 cm circle on the floor.
+ globalThis.self=globalThis;
+ const loader=new GLTFLoader().register(p=>{p.loadTexture=async()=>new THREE.Texture();return {name:'test-textures'};});
+ const b=fs.readFileSync(new URL('../char3.glb',import.meta.url));const g=await loader.parseAsync(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'');
+ const rig=new CharacterRig(g,config('03')),head=rig.model.getObjectByName('Head'),xs=[],zs=[];
+ assert.equal(rig.tracker.name,'Armature');
+ for(let f=144;f<=226;f+=2){rig.seek((f-1)/24);rig.actor.updateMatrixWorld(true);const v=head.getWorldPosition(new THREE.Vector3());xs.push(v.x);zs.push(v.z);}
+ assert.ok(Math.max(...xs)-Math.min(...xs)<.03,'head wanders sideways during the spin');
+ assert.ok(Math.max(...zs)-Math.min(...zs)<.03,'head wanders forward/back during the spin');
+});
+test('the page preview has no play control: the animation is for AR only',()=>{
+ const src=fs.readFileSync(new URL('../js/experience.js',import.meta.url),'utf8');
+ assert.ok(!/PLAY ANIMATION|preview\.onclick=play/.test(src));
+ assert.match(src,/preview\.hidden=true/);
+});

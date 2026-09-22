@@ -1,5 +1,5 @@
 // Animation profiles are tied to the exported asset hashes.
-window.IMABOX_BUILD = "v13-20260922.1";
+window.IMABOX_BUILD = "v14-20260922.1";
 window.IMABOX_DEFAULTS = {
   "startDistance": 5,
   "stopDistance": 2,
@@ -19,7 +19,7 @@ window.IMABOX_CHARACTERS = [
     "image": "assets/imabox--01.png",
     "glb": "char4.glb",
     "usdz": "char4.usdz",
-    "assetRevision": "v13-20260922.1",
+    "assetRevision": "v14-20260922.1",
     "approach": {
       "start": 0,
       "end": 1.5,
@@ -196,7 +196,7 @@ window.IMABOX_CHARACTERS = [
     "image": "assets/imabox--02.png",
     "glb": "char1.glb",
     "usdz": "char1.usdz",
-    "assetRevision": "v13-20260922.1",
+    "assetRevision": "v14-20260922.1",
     "expectedSHA256": "5abace8557610442fc76442427428d54db98cf254004b2d591ffc262a18f82db",
     "motionNode": "Frame",
     "sequence": [
@@ -793,7 +793,7 @@ window.IMABOX_CHARACTERS = [
     "image": "assets/imabox--03.png",
     "glb": "char3.glb",
     "usdz": "char3.usdz",
-    "assetRevision": "v13-20260922.1",
+    "assetRevision": "v14-20260922.1",
     "approach": {
       "start": 0,
       "end": 1.5,
@@ -949,9 +949,9 @@ window.IMABOX_CHARACTERS = [
       ]
     },
     "startDistance": 3.002443167133176,
-    "motionNode": "Frame",
+    "motionNode": "Armature",
     "expectedSHA256": "92f4d1dcf399ad8abf95695569dbdaae5aa115dacf03b037772d0db17ddd30a3",
-    "expectedUSDZSHA256": "c913e5d16569c4d56a1c3e6d70f68d7bfed34d999e5a144eed9bc5fec6cf3374",
+    "expectedUSDZSHA256": "142b1e463261ba4e1f016c0828d5ad52cee6832b444ccb1310c5bd753b2e89e0",
     "sequence": [
       {
         "clips": [
@@ -970,7 +970,7 @@ window.IMABOX_CHARACTERS = [
     "image": "assets/imabox--04.png",
     "glb": "char5.glb",
     "usdz": "char5.usdz",
-    "assetRevision": "v13-20260922.1",
+    "assetRevision": "v14-20260922.1",
     "sequence": [
       {
         "clips": [
@@ -1136,7 +1136,7 @@ window.IMABOX_CHARACTERS = [
     "startDistance": 3.1197137078892787,
     "motionNode": "Frame",
     "expectedSHA256": "3d8b21e35b49da6b52b3dad3dee8bebf24b1ac9723741c2ed6b3dad21484e760",
-    "expectedUSDZSHA256": "ba175d4b4513d8e7eb4da6e2319feef5b9af7e9aee448d547dcb2d349f607ca3",
+    "expectedUSDZSHA256": "750349478200be1adf34c258a932e6eaebc7032eb03b6de2c64e8ba41d7a5c7f",
     "animationDuration": 13.625,
     "sourceVersion": "v2",
     "effectNodes": [
@@ -1150,7 +1150,7 @@ window.IMABOX_CHARACTERS = [
     "image": "assets/imabox--05.png",
     "glb": "char2.glb",
     "usdz": "char2.usdz",
-    "assetRevision": "v13-20260922.1",
+    "assetRevision": "v14-20260922.1",
     "approach": {
       "start": 0,
       "end": 1.5,

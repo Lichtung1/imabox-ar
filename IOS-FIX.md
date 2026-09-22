@@ -242,3 +242,27 @@ resolution, package alignment — and by driving the pages in headless Chromium
 with an iPhone user agent to confirm the AR link appears with `rel="ar"` and a
 single `<img>` child. Quick Look itself has not run on any of these files.
 Please test one character on a real device before rebuilding the rest.
+
+## v14 · 22 September 2026
+
+**Imabox 03's head spin was off its axis on both platforms.** The artist spins
+the character on the `Root` bone, with the pivot set so the head stays planted;
+the character's travel lives on the `Armature` object. Android cancelled travel
+by pinning `Frame` (the hips), and `tools/rebuild-usdz.py` pinned the `Root`
+joint. During the headstand both of those circle around the head, so pinning
+them swung the head around the floor: about 18 cm across on Android and
+55 cm on iPhone, on a 1 m character. Android now tracks `Armature`
+(`motionNode` in characters.js), and `tools/repin-usdz.py` re-pins char3.usdz
+the same way. The head now stays within about 1 cm on both. A test guards it.
+
+**Imabox 04's aura on iPhone.** The USDZ aura was a single mesh with a
+per-frame point cache and changing topology, which Quick Look does not play. It
+had also lost its hide/show keys (so it was visible from the first frame), and
+its material was opacity 1.0 (solid white). `tools/flipbook-aura.py` rebuilds it
+as 159 per-frame meshes, each switched on for its own frame with a stepped
+scale key, visible only on frames 74–232 like Android. The material is emissive
+white at opacity 0.25, set with `--opacity`.
+
+**No PLAY ANIMATION on character pages.** At the artist's request, the
+animation is shown only in AR. The page preview is a still model you can drag
+around; Android shows START AR and iPhone shows View in AR.
