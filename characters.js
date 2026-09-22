@@ -1,5 +1,5 @@
 // Animation profiles are tied to the exported asset hashes.
-window.IMABOX_BUILD = "v14-20260922.1";
+window.IMABOX_BUILD = "v15-20260922.1";
 window.IMABOX_DEFAULTS = {
   "startDistance": 5,
   "stopDistance": 2,
@@ -19,7 +19,7 @@ window.IMABOX_CHARACTERS = [
     "image": "assets/imabox--01.png",
     "glb": "char4.glb",
     "usdz": "char4.usdz",
-    "assetRevision": "v14-20260922.1",
+    "assetRevision": "v15-20260922.1",
     "approach": {
       "start": 0,
       "end": 1.5,
@@ -177,7 +177,7 @@ window.IMABOX_CHARACTERS = [
     "startDistance": 3.1230700035783707,
     "motionNode": "Frame",
     "expectedSHA256": "4943e9a304aadaa7de626a5bdcc6fdf911a4944681b09ba510c393195fc51389",
-    "expectedUSDZSHA256": "1448cbe7b365e269fa5d918152c780de746978c70c5885564ee630cbcc532086",
+    "expectedUSDZSHA256": "1358e8cb4a5da1cad14a6238c478336079d9bf877354ffc09d74ea63914de059",
     "sequence": [
       {
         "clips": [
@@ -196,7 +196,7 @@ window.IMABOX_CHARACTERS = [
     "image": "assets/imabox--02.png",
     "glb": "char1.glb",
     "usdz": "char1.usdz",
-    "assetRevision": "v14-20260922.1",
+    "assetRevision": "v15-20260922.1",
     "expectedSHA256": "5abace8557610442fc76442427428d54db98cf254004b2d591ffc262a18f82db",
     "motionNode": "Frame",
     "sequence": [
@@ -782,7 +782,7 @@ window.IMABOX_CHARACTERS = [
       ]
     },
     "startDistance": 3.874405044352657,
-    "expectedUSDZSHA256": "69150ed351227fa3f2b610b1c39551cd2e21f6ced6f480fef4f6bdef832a9c31",
+    "expectedUSDZSHA256": "e72ba1c5ebdcd9f2530d6948b775f630df47175a2504bfdd1b476c85e9eb346c",
     "animationDuration": 13.5,
     "sourceVersion": "v3"
   },
@@ -793,7 +793,7 @@ window.IMABOX_CHARACTERS = [
     "image": "assets/imabox--03.png",
     "glb": "char3.glb",
     "usdz": "char3.usdz",
-    "assetRevision": "v14-20260922.1",
+    "assetRevision": "v15-20260922.1",
     "approach": {
       "start": 0,
       "end": 1.5,
@@ -951,7 +951,7 @@ window.IMABOX_CHARACTERS = [
     "startDistance": 3.002443167133176,
     "motionNode": "Armature",
     "expectedSHA256": "92f4d1dcf399ad8abf95695569dbdaae5aa115dacf03b037772d0db17ddd30a3",
-    "expectedUSDZSHA256": "142b1e463261ba4e1f016c0828d5ad52cee6832b444ccb1310c5bd753b2e89e0",
+    "expectedUSDZSHA256": "4aa864798b0cde2a6190aa5b637d69a00a883f19269e1bbd4b89d90d233051ae",
     "sequence": [
       {
         "clips": [
@@ -970,7 +970,7 @@ window.IMABOX_CHARACTERS = [
     "image": "assets/imabox--04.png",
     "glb": "char5.glb",
     "usdz": "char5.usdz",
-    "assetRevision": "v14-20260922.1",
+    "assetRevision": "v15-20260922.1",
     "sequence": [
       {
         "clips": [
@@ -1135,8 +1135,8 @@ window.IMABOX_CHARACTERS = [
     },
     "startDistance": 3.1197137078892787,
     "motionNode": "Frame",
-    "expectedSHA256": "3d8b21e35b49da6b52b3dad3dee8bebf24b1ac9723741c2ed6b3dad21484e760",
-    "expectedUSDZSHA256": "750349478200be1adf34c258a932e6eaebc7032eb03b6de2c64e8ba41d7a5c7f",
+    "expectedSHA256": "59174de7f88bed4e6326173e8390b2a6f8798504db22864ee2a9a6b986f966d9",
+    "expectedUSDZSHA256": "ad1d058ee086d7b91756b1879d48216ffcfa23f13f427fb0c349e2fb2f3501a9",
     "animationDuration": 13.625,
     "sourceVersion": "v2",
     "effectNodes": [
@@ -1150,7 +1150,7 @@ window.IMABOX_CHARACTERS = [
     "image": "assets/imabox--05.png",
     "glb": "char2.glb",
     "usdz": "char2.usdz",
-    "assetRevision": "v14-20260922.1",
+    "assetRevision": "v15-20260922.1",
     "approach": {
       "start": 0,
       "end": 1.5,
@@ -1308,7 +1308,7 @@ window.IMABOX_CHARACTERS = [
     "startDistance": 3.124934843609978,
     "motionNode": "Frame",
     "expectedSHA256": "a05561ecbd6aaf072dd7704c05ea9bac34887cd7eae3308e0042a18434117baf",
-    "expectedUSDZSHA256": "8134a4c991db6cbf8b6d6b394cc8b87713909a4132149b4690f8d5c3e95da81d",
+    "expectedUSDZSHA256": "5053dac2a5522b8d7034e9b6b0d6a35100220d349769624683b4f00f8597c33f",
     "sequence": [
       {
         "clips": [

@@ -6,7 +6,9 @@
 // character was unavailable. Same story for experience.js.
 export function timeoutSignal(ms) {
   if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
-    try { return AbortSignal.timeout(ms); } catch {}
+    try {
+      return AbortSignal.timeout(ms);
+    } catch {}
   }
   if (typeof AbortController === 'undefined') return undefined;
   const controller = new AbortController();
@@ -18,7 +20,9 @@ export function timeoutSignal(ms) {
 // and rel="ar" may even report as supported, but the tap does nothing, which
 // is the other common way an iPhone visitor sees "nothing happens".
 export function inAppBrowser(ua) {
-  return /FBAN|FBAV|FB_IAB|Instagram|Line\/|Twitter|TikTok|Snapchat|LinkedInApp|Pinterest|WhatsApp|MicroMessenger/i.test(ua);
+  return /FBAN|FBAV|FB_IAB|Instagram|Line\/|Twitter|TikTok|Snapchat|LinkedInApp|Pinterest|WhatsApp|MicroMessenger/i.test(
+    ua,
+  );
 }
 
 export function platformRoute(ua, platform, touches, quickLook, xr) {
@@ -28,15 +32,28 @@ export function platformRoute(ua, platform, touches, quickLook, xr) {
   }
   if (xr) return 'webxr';
   if (/Android/i.test(ua))
-    return /Chrome\//.test(ua) && !/(EdgA|OPR|SamsungBrowser)\//.test(ua) ? 'android-unavailable' : 'android-browser';
+    return /Chrome\//.test(ua) && !/(EdgA|OPR|SamsungBrowser)\//.test(ua)
+      ? 'android-unavailable'
+      : 'android-browser';
   return 'desktop';
 }
 
 export async function detectPlatform() {
-  let xr = false, quickLook = false;
-  try { xr = !!navigator.xr && await navigator.xr.isSessionSupported('immersive-ar'); } catch {}
-  try { quickLook = document.createElement('a').relList.supports('ar'); } catch {}
-  return platformRoute(navigator.userAgent, navigator.platform, navigator.maxTouchPoints || 0, quickLook, xr);
+  let xr = false,
+    quickLook = false;
+  try {
+    xr = !!navigator.xr && (await navigator.xr.isSessionSupported('immersive-ar'));
+  } catch {}
+  try {
+    quickLook = document.createElement('a').relList.supports('ar');
+  } catch {}
+  return platformRoute(
+    navigator.userAgent,
+    navigator.platform,
+    navigator.maxTouchPoints || 0,
+    quickLook,
+    xr,
+  );
 }
 
 // Three states, not two. "unknown" means the check itself failed -- offline for
@@ -44,7 +61,7 @@ export async function detectPlatform() {
 // that as "missing" is what hid the AR button on iPhones whose file was fine.
 export async function available(url) {
   try {
-    const r = await fetch(url, {method: 'HEAD', cache: 'no-cache', signal: timeoutSignal(12000)});
+    const r = await fetch(url, { method: 'HEAD', cache: 'no-cache', signal: timeoutSignal(12000) });
     if (r.status === 404 || r.status === 410) return 'missing';
     if (!r.ok) return 'unknown';
     if (/text\/html/i.test(r.headers.get('content-type') || '')) return 'missing';

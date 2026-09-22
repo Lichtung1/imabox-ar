@@ -266,3 +266,28 @@ white at opacity 0.25, set with `--opacity`.
 **No PLAY ANIMATION on character pages.** At the artist's request, the
 animation is shown only in AR. The page preview is a still model you can drag
 around; Android shows START AR and iPhone shows View in AR.
+
+## v15 · 22 September 2026
+
+**Bevels on iPhone.** Blender's USD export skipped the Bevel modifier on the
+three body boxes, so every iPhone model had hard 8-corner boxes.
+`tools/bevel-usdz.py` applies the same bevel from the .blend files (0.1,
+6 segments, 30 degrees, smooth-shaded) to the boxes inside each USDZ, carrying
+UVs and skin weights across, using Blender itself. char5.glb (Imabox 04) was
+also exported without bevels, so Android had hard edges there too.
+`tools/bevel-glb.py` fixes that one. All five now have the same 464/576-vertex
+rounded boxes on both platforms.
+
+**Calmer aura on iPhone.** v14 swapped to a new spiky aura shape every frame,
+which read as strobing. `tools/aura-usdz.py` replaces that with three of the
+artist's aura shapes, layered faintly (opacity 0.12 each), turning slowly in
+different directions and breathing ±5% in size. There is no switching or
+flashing. It is shown on frames 74–232, like Android.
+
+**Apple page.** The EXPLORE IN 3D button is gone. The drag-to-look preview
+loads on its own on every platform, and View in AR is the only button. The
+button row is now a centred flex row, so buttons line up on iPad.
+
+**Readable source.** The HTML, CSS and site JavaScript were minified onto a
+few long lines. They are now formatted with Prettier (`.prettierrc.json`).
+Vendor libraries in `vendor/` are left as shipped.

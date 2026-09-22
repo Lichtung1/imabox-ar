@@ -1,167 +1,365 @@
 import * as THREE from 'three';
-import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
-import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
-import {CharacterRig,posedBounds} from './animation.js?v=v14-20260922.1';
-import {approachProgress,stopBeforeViewer} from './movement.js?v=v14-20260922.1';
-import {timeoutSignal} from './platform.js?v=v14-20260922.1';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CharacterRig, posedBounds } from './animation.js?v=v15-20260922.1';
+import { approachProgress, stopBeforeViewer } from './movement.js?v=v15-20260922.1';
+import { timeoutSignal } from './platform.js?v=v15-20260922.1';
 
 // Render the emissive aura without obscuring the character.
 function unwrapGlowMaterials(scene) {
-  const seen=new Set();
-  scene.traverse(node=>{
-    for(const material of [node.material].flat()) {
-      if(!material||seen.has(material))continue;seen.add(material);
-      const unlit=material.color&&material.color.getHex()===0x000000;
-      const glows=material.emissive&&material.emissive.getHex()!==0x000000;
-      if(!(unlit&&glows))continue;
-      material.transparent=true;
-      material.blending=THREE.AdditiveBlending;
-      material.depthWrite=false;   // never occlude what it is supposed to wrap
-      material.toneMapped=false;
+  const seen = new Set();
+  scene.traverse((node) => {
+    for (const material of [node.material].flat()) {
+      if (!material || seen.has(material)) continue;
+      seen.add(material);
+      const unlit = material.color && material.color.getHex() === 0x000000;
+      const glows = material.emissive && material.emissive.getHex() !== 0x000000;
+      if (!(unlit && glows)) continue;
+      material.transparent = true;
+      material.blending = THREE.AdditiveBlending;
+      material.depthWrite = false; // never occlude what it is supposed to wrap
+      material.toneMapped = false;
       // Blender's strength assumes bloom. Additive already brightens, so a
       // strength of 15 here just clamps every pixel to flat white.
-      material.emissiveIntensity=Math.min(material.emissiveIntensity??1,1);
-      material.opacity=.3;
-      material.needsUpdate=true;
+      material.emissiveIntensity = Math.min(material.emissiveIntensity ?? 1, 1);
+      material.opacity = 0.3;
+      material.needsUpdate = true;
     }
   });
 }
 
-export async function mountExperience({config,url,route,art,enter,preview,setStatus}) {
-  config={...config};
+export async function mountExperience({ config, url, route, art, enter, setStatus }) {
+  config = { ...config };
   // timeoutSignal, not AbortSignal.timeout: the bare call throws on Safari 15.
-  const response=await fetch(url,{signal:timeoutSignal(45000)});
-  if(!response.ok)throw Error(`Model request failed (${response.status}).`);
-  const bytes=await response.arrayBuffer();
-  if(config.expectedSHA256) {
-    const digest=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),x=>x.toString(16).padStart(2,'0')).join('');
-    if(digest!==config.expectedSHA256) {
+  const response = await fetch(url, { signal: timeoutSignal(45000) });
+  if (!response.ok) throw Error(`Model request failed (${response.status}).`);
+  const bytes = await response.arrayBuffer();
+  if (config.expectedSHA256) {
+    const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), (x) =>
+      x.toString(16).padStart(2, '0'),
+    ).join('');
+    if (digest !== config.expectedSHA256) {
       // A replacement export must not inherit old timing or clip-name assumptions.
-      throw Error('This model has changed. Its animation profile must be reviewed before playback.');
+      throw Error(
+        'This model has changed. Its animation profile must be reviewed before playback.',
+      );
     }
   }
-  const gltf=await new GLTFLoader().parseAsync(bytes,new URL('.',url).href);
+  const gltf = await new GLTFLoader().parseAsync(bytes, new URL('.', url).href);
   unwrapGlowMaterials(gltf.scene);
-  const rig=new CharacterRig(gltf,config);
-  if(config.approach && !(config.approach.start>=0 && config.approach.end>config.approach.start && config.approach.end<=rig.player.duration+.001))throw Error('The configured running interval is outside this animation.');
-  if(!(config.startDistance>config.stopDistance && config.stopDistance>0 && config.height>0))throw Error('Invalid character placement settings.');
-  const scene=new THREE.Scene();scene.add(rig.actor);
-  scene.add(new THREE.HemisphereLight(0xffffff,0x8a8a8a,2.4));
-  const sun=new THREE.DirectionalLight(0xffffff,2.6);sun.position.set(3,5,4);scene.add(sun);
-  const camera=new THREE.PerspectiveCamera(42,1,.01,100);
-  camera.position.set(0,config.height*.65,config.height*2.5);
-  const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
-  renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.xr.enabled=true;renderer.xr.setReferenceSpaceType('local');
-  renderer.domElement.setAttribute('aria-label',`${config.name} 3D preview`);
+  const rig = new CharacterRig(gltf, config);
+  if (
+    config.approach &&
+    !(
+      config.approach.start >= 0 &&
+      config.approach.end > config.approach.start &&
+      config.approach.end <= rig.player.duration + 0.001
+    )
+  )
+    throw Error('The configured running interval is outside this animation.');
+  if (!(config.startDistance > config.stopDistance && config.stopDistance > 0 && config.height > 0))
+    throw Error('Invalid character placement settings.');
+  const scene = new THREE.Scene();
+  scene.add(rig.actor);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8a8a, 2.4));
+  const sun = new THREE.DirectionalLight(0xffffff, 2.6);
+  sun.position.set(3, 5, 4);
+  scene.add(sun);
+  const camera = new THREE.PerspectiveCamera(42, 1, 0.01, 100);
+  camera.position.set(0, config.height * 0.65, config.height * 2.5);
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.xr.enabled = true;
+  renderer.xr.setReferenceSpaceType('local');
+  renderer.domElement.setAttribute('aria-label', `${config.name} 3D preview`);
   // Keep the poster until textures, shaders and the grounded first pose render.
-  renderer.domElement.style.visibility='hidden';
-  renderer.domElement.style.position='absolute';
-  renderer.domElement.style.inset='0';
+  renderer.domElement.style.visibility = 'hidden';
+  renderer.domElement.style.position = 'absolute';
+  renderer.domElement.style.inset = '0';
   art.append(renderer.domElement);
-  const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,config.height*.45,0);controls.enablePan=false;controls.minDistance=config.height;controls.maxDistance=config.height*5;controls.update();controls.saveState();
-  const marker=new THREE.Mesh(new THREE.RingGeometry(.14,.19,40).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0xfa601c,side:THREE.DoubleSide}));
-  marker.visible=false;scene.add(marker);
-  const overlay=document.createElement('div');overlay.id='xr-ui';overlay.hidden=true;
-  overlay.innerHTML=`<div class="xr-panel"><p id="xr-status" role="status"></p><p class="xr-build">IMABOX · ${window.IMABOX_BUILD}</p></div><div class="xr-panel xr-actions"><button id="place" disabled>PLACE & PLAY</button><button id="again" hidden>PLAY AGAIN</button><button id="rescan" hidden>PLACE AGAIN</button><button id="exit">EXIT AR</button></div>`;
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.target.set(0, config.height * 0.45, 0);
+  controls.enablePan = false;
+  controls.minDistance = config.height;
+  controls.maxDistance = config.height * 5;
+  controls.update();
+  controls.saveState();
+  const marker = new THREE.Mesh(
+    new THREE.RingGeometry(0.14, 0.19, 40).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color: 0xfa601c, side: THREE.DoubleSide }),
+  );
+  marker.visible = false;
+  scene.add(marker);
+  const overlay = document.createElement('div');
+  overlay.id = 'xr-ui';
+  overlay.hidden = true;
+  overlay.innerHTML = `
+    <div class="xr-panel">
+      <p id="xr-status" role="status"></p>
+      <p class="xr-build">IMABOX · ${window.IMABOX_BUILD}</p>
+    </div>
+    <div class="xr-panel xr-actions">
+      <button id="place" disabled>PLACE & PLAY</button>
+      <button id="again" hidden>PLAY AGAIN</button>
+      <button id="rescan" hidden>PLACE AGAIN</button>
+      <button id="exit">EXIT AR</button>
+    </div>`;
   document.body.append(overlay);
-  const $=id=>overlay.querySelector('#'+id),message=text=>$('xr-status').textContent=text;
-  overlay.addEventListener('beforexrselect',event=>event.preventDefault());
-  let session=null,hitSource=null,state='preview',playing=false,lastTime=null,validMarkerTime=0,travelStopped=false,disposed=false;
-  const spawn=new THREE.Vector3(),start=new THREE.Vector3(),end=new THREE.Vector3(),viewer=new THREE.Vector3(),forward=new THREE.Vector3(),candidate=new THREE.Vector3();
-  const hitMatrix=new THREE.Matrix4(),hitPoint=new THREE.Vector3(),orientation=new THREE.Quaternion();
-  function sizeCanvas(){if(disposed)return;const w=session?innerWidth:art.clientWidth,h=session?innerHeight:art.clientHeight;camera.aspect=w/Math.max(1,h);camera.updateProjectionMatrix();renderer.setSize(w,Math.max(1,h),false);}
-  const resizeObserver=new ResizeObserver(sizeCanvas);resizeObserver.observe(art);addEventListener('resize',sizeCanvas);sizeCanvas();
+  const $ = (id) => overlay.querySelector('#' + id),
+    message = (text) => ($('xr-status').textContent = text);
+  overlay.addEventListener('beforexrselect', (event) => event.preventDefault());
+  let session = null,
+    hitSource = null,
+    state = 'preview',
+    playing = false,
+    lastTime = null,
+    validMarkerTime = 0,
+    travelStopped = false,
+    disposed = false;
+  const spawn = new THREE.Vector3(),
+    start = new THREE.Vector3(),
+    end = new THREE.Vector3(),
+    viewer = new THREE.Vector3(),
+    forward = new THREE.Vector3(),
+    candidate = new THREE.Vector3();
+  const hitMatrix = new THREE.Matrix4(),
+    hitPoint = new THREE.Vector3(),
+    orientation = new THREE.Quaternion();
+  function sizeCanvas() {
+    if (disposed) return;
+    const w = session ? innerWidth : art.clientWidth,
+      h = session ? innerHeight : art.clientHeight;
+    camera.aspect = w / Math.max(1, h);
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, Math.max(1, h), false);
+  }
+  const resizeObserver = new ResizeObserver(sizeCanvas);
+  resizeObserver.observe(art);
+  addEventListener('resize', sizeCanvas);
+  sizeCanvas();
   try {
-    await renderer.compileAsync(scene,camera);
-    renderer.render(scene,camera);
-  } catch(error) {
-    resizeObserver.disconnect();removeEventListener('resize',sizeCanvas);
-    controls.dispose();renderer.dispose();renderer.domElement.remove();overlay.remove();
+    await renderer.compileAsync(scene, camera);
+    renderer.render(scene, camera);
+  } catch (error) {
+    resizeObserver.disconnect();
+    removeEventListener('resize', sizeCanvas);
+    controls.dispose();
+    renderer.dispose();
+    renderer.domElement.remove();
+    overlay.remove();
     throw error;
   }
   art.replaceChildren(renderer.domElement);
-  renderer.domElement.style.position='';renderer.domElement.style.inset='';
-  renderer.domElement.style.visibility='';
-  function play(){rig.reset();playing=true;travelStopped=false;if(session){rig.actor.position.copy(start);state='playing';marker.visible=false;$('again').hidden=true;message('Watch your character.');}}
-  // The artist wants the animation seen only in AR. The page preview is a
-  // still, first-frame model the visitor can drag around -- no play control.
-  preview.hidden=true;preview.onclick=null;
-  function scan(){state='scanning';playing=false;rig.actor.visible=false;marker.visible=false;validMarkerTime=0;$('place').hidden=false;$('place').disabled=true;$('again').hidden=true;$('rescan').hidden=true;message('Point at a clear, level floor and move your phone slowly.');}
-  function restore(){
-    hitSource?.cancel();hitSource=null;session=null;state='preview';playing=false;lastTime=null;
-    document.body.classList.remove('in-ar');overlay.hidden=true;marker.visible=false;
-    rig.actor.visible=true;rig.actor.position.set(0,0,0);rig.actor.rotation.set(0,0,0);rig.reset();
-    controls.enabled=true;controls.reset();enter.disabled=false;sizeCanvas();
+  renderer.domElement.style.position = '';
+  renderer.domElement.style.inset = '';
+  renderer.domElement.style.visibility = '';
+  function play() {
+    rig.reset();
+    playing = true;
+    travelStopped = false;
+    if (session) {
+      rig.actor.position.copy(start);
+      state = 'playing';
+      marker.visible = false;
+      $('again').hidden = true;
+      message('Watch your character.');
+    }
   }
-  enter.hidden=route!=='webxr';enter.disabled=false;
-  enter.onclick=async()=>{
-    if(session)return;enter.disabled=true;
+  // The animation plays only in AR, at the artist's request. The page preview
+  // is a still, first-frame model the visitor can drag around.
+  function scan() {
+    state = 'scanning';
+    playing = false;
+    rig.actor.visible = false;
+    marker.visible = false;
+    validMarkerTime = 0;
+    $('place').hidden = false;
+    $('place').disabled = true;
+    $('again').hidden = true;
+    $('rescan').hidden = true;
+    message('Point at a clear, level floor and move your phone slowly.');
+  }
+  function restore() {
+    hitSource?.cancel();
+    hitSource = null;
+    session = null;
+    state = 'preview';
+    playing = false;
+    lastTime = null;
+    document.body.classList.remove('in-ar');
+    overlay.hidden = true;
+    marker.visible = false;
+    rig.actor.visible = true;
+    rig.actor.position.set(0, 0, 0);
+    rig.actor.rotation.set(0, 0, 0);
+    rig.reset();
+    controls.enabled = true;
+    controls.reset();
+    enter.disabled = false;
+    sizeCanvas();
+  }
+  enter.hidden = route !== 'webxr';
+  enter.disabled = false;
+  enter.onclick = async () => {
+    if (session) return;
+    enter.disabled = true;
     try {
       // Request directly from the user gesture, before any loading or feature checks.
-      const requested=await navigator.xr.requestSession('immersive-ar',{requiredFeatures:['hit-test','dom-overlay'],domOverlay:{root:overlay}});
-      session=requested;requested.addEventListener('end',restore,{once:true});
+      const requested = await navigator.xr.requestSession('immersive-ar', {
+        requiredFeatures: ['hit-test', 'dom-overlay'],
+        domOverlay: { root: overlay },
+      });
+      session = requested;
+      requested.addEventListener('end', restore, { once: true });
       // Hide immediately: XR setup can take several frames before scan() runs.
-      rig.actor.visible=false;
-      overlay.hidden=false;document.body.classList.add('in-ar');
+      rig.actor.visible = false;
+      overlay.hidden = false;
+      document.body.classList.add('in-ar');
       await renderer.xr.setSession(requested);
-      if(session!==requested)return;
-      const space=await requested.requestReferenceSpace('viewer');
-      const source=await requested.requestHitTestSource({space});
-      if(session!==requested){source.cancel();return;}
-      hitSource=source;controls.enabled=false;sizeCanvas();scan();
-    } catch(error) {
-      if(session){try{await session.end();}catch{restore();}}else restore();
-      setStatus('Could not start AR. Use Chrome on a supported Android phone and allow camera access. '+error.message);
+      if (session !== requested) return;
+      const space = await requested.requestReferenceSpace('viewer');
+      const source = await requested.requestHitTestSource({ space });
+      if (session !== requested) {
+        source.cancel();
+        return;
+      }
+      hitSource = source;
+      controls.enabled = false;
+      sizeCanvas();
+      scan();
+    } catch (error) {
+      if (session) {
+        try {
+          await session.end();
+        } catch {
+          restore();
+        }
+      } else restore();
+      setStatus(
+        'Could not start AR. Use Chrome on a supported Android phone and allow camera access. ' +
+          error.message,
+      );
     }
   };
-  $('exit').onclick=()=>session?.end();$('rescan').onclick=scan;$('again').onclick=play;
-  $('place').onclick=()=>{
-    if(state!=='scanning'||!marker.visible||performance.now()-validMarkerTime>250)return;
+  $('exit').onclick = () => session?.end();
+  $('rescan').onclick = scan;
+  $('again').onclick = play;
+  $('place').onclick = () => {
+    if (state !== 'scanning' || !marker.visible || performance.now() - validMarkerTime > 250)
+      return;
     // Copy the displayed position. Do not recalculate placement on tap.
-    start.copy(spawn);forward.subVectors(start,viewer);forward.y=0;
-    const distance=forward.length();if(distance<=config.stopDistance+.05){message('Point farther away to leave room for the approach.');return;}
-    forward.normalize();end.copy(viewer).addScaledVector(forward,config.stopDistance);end.y=start.y;
-    rig.actor.position.copy(start);rig.actor.rotation.y=Math.atan2(-forward.x,-forward.z);rig.actor.visible=true;
-    $('place').hidden=true;$('rescan').hidden=false;play();
+    start.copy(spawn);
+    forward.subVectors(start, viewer);
+    forward.y = 0;
+    const distance = forward.length();
+    if (distance <= config.stopDistance + 0.05) {
+      message('Point farther away to leave room for the approach.');
+      return;
+    }
+    forward.normalize();
+    end.copy(viewer).addScaledVector(forward, config.stopDistance);
+    end.y = start.y;
+    rig.actor.position.copy(start);
+    rig.actor.rotation.y = Math.atan2(-forward.x, -forward.z);
+    rig.actor.visible = true;
+    $('place').hidden = true;
+    $('rescan').hidden = false;
+    play();
   };
-  renderer.setAnimationLoop((time,frame)=>{
-    const dt=lastTime===null?0:Math.max(0,Math.min((time-lastTime)/1000,.1));lastTime=time;
-    let tracked=!session;
-    if(session&&frame){
-      const reference=renderer.xr.getReferenceSpace(),pose=frame.getViewerPose(reference);
-      tracked=!!pose&&session.visibilityState==='visible';
-      if(!tracked){marker.visible=false;validMarkerTime=0;$('place').disabled=true;message('Tracking paused. Move your phone slowly to find the room again.');}
-      else {
-        viewer.set(pose.transform.position.x,pose.transform.position.y,pose.transform.position.z);
-        if(state==='scanning'&&hitSource){
-          marker.visible=false;
-          for(const hit of frame.getHitTestResults(hitSource)){
-            const hp=hit.getPose(reference);if(!hp)continue;hitMatrix.fromArray(hp.transform.matrix);hitPoint.setFromMatrixPosition(hitMatrix);
-            if(hitMatrix.elements[5]<.9||hitPoint.y>viewer.y-.25)continue;
-            orientation.set(pose.transform.orientation.x,pose.transform.orientation.y,pose.transform.orientation.z,pose.transform.orientation.w);
-            forward.set(0,0,-1).applyQuaternion(orientation);forward.y=0;if(forward.lengthSq()<.04)continue;
-            spawn.copy(viewer).addScaledVector(forward.normalize(),config.startDistance);spawn.y=hitPoint.y;
-            marker.position.copy(spawn);marker.position.y+=.005;marker.visible=true;validMarkerTime=performance.now();break;
+  renderer.setAnimationLoop((time, frame) => {
+    const dt = lastTime === null ? 0 : Math.max(0, Math.min((time - lastTime) / 1000, 0.1));
+    lastTime = time;
+    let tracked = !session;
+    if (session && frame) {
+      const reference = renderer.xr.getReferenceSpace(),
+        pose = frame.getViewerPose(reference);
+      tracked = !!pose && session.visibilityState === 'visible';
+      if (!tracked) {
+        marker.visible = false;
+        validMarkerTime = 0;
+        $('place').disabled = true;
+        message('Tracking paused. Move your phone slowly to find the room again.');
+      } else {
+        viewer.set(pose.transform.position.x, pose.transform.position.y, pose.transform.position.z);
+        if (state === 'scanning' && hitSource) {
+          marker.visible = false;
+          for (const hit of frame.getHitTestResults(hitSource)) {
+            const hp = hit.getPose(reference);
+            if (!hp) continue;
+            hitMatrix.fromArray(hp.transform.matrix);
+            hitPoint.setFromMatrixPosition(hitMatrix);
+            if (hitMatrix.elements[5] < 0.9 || hitPoint.y > viewer.y - 0.25) continue;
+            orientation.set(
+              pose.transform.orientation.x,
+              pose.transform.orientation.y,
+              pose.transform.orientation.z,
+              pose.transform.orientation.w,
+            );
+            forward.set(0, 0, -1).applyQuaternion(orientation);
+            forward.y = 0;
+            if (forward.lengthSq() < 0.04) continue;
+            spawn.copy(viewer).addScaledVector(forward.normalize(), config.startDistance);
+            spawn.y = hitPoint.y;
+            marker.position.copy(spawn);
+            marker.position.y += 0.005;
+            marker.visible = true;
+            validMarkerTime = performance.now();
+            break;
           }
-          $('place').disabled=!marker.visible;
-          message(marker.visible?`The orange circle is the starting point, about ${config.startDistance.toFixed(2)} m away. Check that the floor is clear and level all the way there, then tap Place & Play.`:'Point at a clear, level floor and move your phone slowly.');
-        }else if(playing)message(travelStopped?'Finishing the animation…':'Watch your character.');
+          $('place').disabled = !marker.visible;
+          message(
+            marker.visible
+              ? `The orange circle is the starting point, about ${config.startDistance.toFixed(2)} m away. Check that the floor is clear and level all the way there, then tap Place & Play.`
+              : 'Point at a clear, level floor and move your phone slowly.',
+          );
+        } else if (playing)
+          message(travelStopped ? 'Finishing the animation…' : 'Watch your character.');
       }
     }
-    if(playing&&tracked&&!document.hidden){
+    if (playing && tracked && !document.hidden) {
       rig.update(dt);
-      if(session&&!travelStopped&&config.approach){
-        candidate.lerpVectors(start,end,approachProgress(rig.player.time,config.approach));
-        const step=stopBeforeViewer(rig.actor.position,candidate,viewer,config.stopDistance);
-        rig.actor.position.lerp(candidate,step.fraction);
-        travelStopped=step.stopped||rig.player.time>=config.approach.end;
+      if (session && !travelStopped && config.approach) {
+        candidate.lerpVectors(start, end, approachProgress(rig.player.time, config.approach));
+        const step = stopBeforeViewer(rig.actor.position, candidate, viewer, config.stopDistance);
+        rig.actor.position.lerp(candidate, step.fraction);
+        travelStopped = step.stopped || rig.player.time >= config.approach.end;
       }
       // Animation completion is independent of position and approach state.
-      if(rig.player.complete){playing=false;if(session){state='finished';$('again').hidden=false;message('Animation complete.');}}
+      if (rig.player.complete) {
+        playing = false;
+        if (session) {
+          state = 'finished';
+          $('again').hidden = false;
+          message('Animation complete.');
+        }
+      }
     }
-    renderer.render(scene,camera);
+    renderer.render(scene, camera);
   });
   setStatus('Drag to look around.');
-  if(new URLSearchParams(location.search).has('debug'))window.imaboxDebug={rig,scene,renderer,play,posedBounds,get state(){return state;}};
-  addEventListener('pagehide',()=>{disposed=true;renderer.setAnimationLoop(null);resizeObserver.disconnect();removeEventListener('resize',sizeCanvas);controls.dispose();renderer.dispose();hitSource?.cancel();session?.end().catch(()=>{});},{once:true});
+  if (new URLSearchParams(location.search).has('debug'))
+    window.imaboxDebug = {
+      rig,
+      scene,
+      renderer,
+      play,
+      posedBounds,
+      get state() {
+        return state;
+      },
+    };
+  addEventListener(
+    'pagehide',
+    () => {
+      disposed = true;
+      renderer.setAnimationLoop(null);
+      resizeObserver.disconnect();
+      removeEventListener('resize', sizeCanvas);
+      controls.dispose();
+      renderer.dispose();
+      hitSource?.cancel();
+      session?.end().catch(() => {});
+    },
+    { once: true },
+  );
 }
