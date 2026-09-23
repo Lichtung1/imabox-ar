@@ -55,8 +55,9 @@ async function init() {
   host.style.setProperty('--accent', c.color);
   host.innerHTML = `
     <div class="character-layout">
-      <div class="character-art" id="art">
+      <div class="character-art loading" id="art">
         <img id="poster" src="${localUrl(c.image)}" alt="${c.name}" width="1080" height="1080">
+        <div class="loadbar" id="loadbar" hidden><span></span></div>
       </div>
       <div class="character-info">
         <h1>${c.name}</h1>
@@ -140,6 +141,7 @@ async function init() {
   $('retry').onclick = () => location.reload();
   const glbState = await glbCheck;
   if (glbState === 'missing') {
+    $('art').classList.remove('loading');
     $('preview-status').textContent = '3D preview coming soon.';
     if (route === 'webxr') {
       $('retry').hidden = false;
@@ -153,6 +155,8 @@ async function init() {
   const apple = route === 'apple' || route === 'apple-browser' || route === 'apple-inapp';
   try {
     const { mountExperience } = await import(versioned('js/experience.js'));
+    const bar = $('loadbar');
+    bar.hidden = false;
     await mountExperience({
       config,
       url: asset(c.glb),
@@ -160,11 +164,19 @@ async function init() {
       art: $('art'),
       enter: $('enter'),
       setStatus: (text) => ($('preview-status').textContent = text),
+      // Real download progress; null means the size is unknown, so the bar
+      // shows a gentle back-and-forth instead of a percentage.
+      onProgress: (fraction) => {
+        bar.classList.toggle('indeterminate', fraction === null);
+        if (fraction !== null) bar.style.setProperty('--progress', fraction);
+      },
     });
-    if (route === 'webxr')
-      $('status').textContent = 'Find open floor space, then tap View in AR.';
+    $('art').classList.remove('loading');
+    if (route === 'webxr') $('status').textContent = 'Find open floor space, then tap View in AR.';
   } catch (error) {
     console.error(error);
+    $('loadbar').hidden = true;
+    $('art').classList.remove('loading');
     if (apple) return;
     $('preview-status').textContent = `The 3D experience could not load. ${error.message}`;
     $('retry').hidden = false;

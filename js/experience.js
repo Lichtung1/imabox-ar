@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { CharacterRig, posedBounds } from './animation.js?v=v17-20260923.1';
-import { approachProgress, stopBeforeViewer } from './movement.js?v=v17-20260923.1';
-import { timeoutSignal } from './platform.js?v=v17-20260923.1';
+import { CharacterRig, posedBounds } from './animation.js?v=v18-20260923.1';
+import { approachProgress, stopBeforeViewer } from './movement.js?v=v18-20260923.1';
+import { timeoutSignal } from './platform.js?v=v18-20260923.1';
 
 // Render the emissive aura without obscuring the character.
 function unwrapGlowMaterials(scene) {
@@ -28,12 +28,48 @@ function unwrapGlowMaterials(scene) {
   });
 }
 
-export async function mountExperience({ config, url, route, art, enter, setStatus }) {
+// Read the model while reporting progress (0..1), or null when the size is unknown.
+async function readWithProgress(response, onProgress) {
+  const total = Number(response.headers.get('content-length')) || 0;
+  if (!response.body || !response.body.getReader) {
+    onProgress(null);
+    return response.arrayBuffer();
+  }
+  const reader = response.body.getReader();
+  const chunks = [];
+  let received = 0;
+  onProgress(total ? 0 : null);
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    received += value.length;
+    // A compressed download can report a smaller size than it delivers.
+    if (total) onProgress(Math.min(1, received / total));
+  }
+  const bytes = new Uint8Array(received);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return bytes.buffer;
+}
+
+export async function mountExperience({
+  config,
+  url,
+  route,
+  art,
+  enter,
+  setStatus,
+  onProgress = () => {},
+}) {
   config = { ...config };
   // timeoutSignal, not AbortSignal.timeout: the bare call throws on Safari 15.
   const response = await fetch(url, { signal: timeoutSignal(45000) });
   if (!response.ok) throw Error(`Model request failed (${response.status}).`);
-  const bytes = await response.arrayBuffer();
+  const bytes = await readWithProgress(response, onProgress);
   if (config.expectedSHA256) {
     const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), (x) =>
       x.toString(16).padStart(2, '0'),
@@ -220,7 +256,7 @@ export async function mountExperience({ config, url, route, art, enter, setStatu
       // a few seconds when AR starts. Keep the buttons above it until it fades.
       overlay.classList.add('clear-notice');
       clearTimeout(noticeTimer);
-      noticeTimer = setTimeout(() => overlay.classList.remove('clear-notice'), 4500);
+      noticeTimer = setTimeout(() => overlay.classList.remove('clear-notice'), 8000);
       document.body.classList.add('in-ar');
       await renderer.xr.setSession(requested);
       if (session !== requested) return;

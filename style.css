@@ -264,6 +264,67 @@ button:focus-visible {
 a.cta::after {
   content: 'View in AR';
 }
+/* While the 3D model downloads: the poster gently bobs, as if about to hop
+   out, and a thin orange bar shows real download progress. Both vanish when
+   the draggable model replaces the poster. */
+.character-art.loading #poster {
+  animation: imabox-bob 1.6s ease-in-out infinite;
+  transform-origin: 50% 90%;
+}
+@keyframes imabox-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-3%) rotate(-1.5deg);
+  }
+  50% {
+    transform: translateY(0) rotate(0deg);
+  }
+  75% {
+    transform: translateY(-3%) rotate(1.5deg);
+  }
+}
+.loadbar {
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  bottom: 4%;
+  height: 6px;
+  border: 2px solid #000;
+  background: #fff;
+  overflow: hidden;
+}
+.loadbar span {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--imabox-orange);
+  transform-origin: left;
+  transform: scaleX(var(--progress, 0));
+  transition: transform 0.2s linear;
+}
+/* Size unknown: a short block slides back and forth instead of a percentage. */
+.loadbar.indeterminate span {
+  width: 30%;
+  transform: none;
+  animation: imabox-slide 1.2s ease-in-out infinite alternate;
+}
+@keyframes imabox-slide {
+  from {
+    margin-left: 0;
+  }
+  to {
+    margin-left: 70%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .character-art.loading #poster,
+  .loadbar.indeterminate span {
+    animation: none;
+  }
+}
 #share {
   margin: 24px auto 0;
 }
