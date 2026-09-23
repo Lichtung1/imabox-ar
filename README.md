@@ -1,29 +1,49 @@
-# IMABOX
+# IMABOX AR
 
-Five animated characters, a gallery, and platform-specific AR. Hosted on GitHub Pages.
+Five animated IMABOX characters you can place in your room with your phone.
 
-Build: `v16-20260922.1`
+Live at https://imabox-ar.github.io/ (GitHub Pages, deployed from `main`).
 
-## Models
+## How it works
 
-| Page | Model | Source revision | Duration |
-|---|---|---|---:|
-| 01 | char4 | v2 | 18.375 s |
-| 02 | char1 | v3 | 13.500 s |
-| 03 | char3 | v2 | 17.042 s |
-| 04 | char5 | v2 | 13.625 s |
-| 05 | char2 | v3 | 25.375 s |
+- **iPhone / iPad:** VIEW IN AR opens the character's `.usdz` in Apple's AR viewer.
+- **Android (Chrome):** VIEW IN AR starts AR in the browser. Tap the floor and the character walks in and plays its animation.
+- **Everything else:** a 3D model you can drag around, plus a QR code to open the page on a phone.
 
-GLB and USDZ files come from the same approved scene timelines. Each GLB contains one Scene clip. Per-model hashes, timing and approach profiles are in characters.js.
+## Characters
 
-Android uses WebXR with floor placement, measured forward movement, a two-metre stopping distance and complete animation playback. Apple uses the exported USDZ in AR Quick Look. Apple placement appearance and playback controls belong to Quick Look.
+| Page | Model files |
+|---|---|
+| `characters/01/` | `char4.glb`, `char4.usdz` |
+| `characters/02/` | `char1.glb`, `char1.usdz` |
+| `characters/03/` | `char3.glb`, `char3.usdz` |
+| `characters/04/` | `char5.glb`, `char5.usdz` |
+| `characters/05/` | `char2.glb`, `char2.usdz` |
 
-The aura in char5 retains its timed visibility and 24 fps deformation. Its mobile mesh uses one subdivision level and an emissive material approximation. It is excluded from character sizing and floor measurement.
+The page numbers follow the posters in `assets/`. Settings for each character (timing, walk-in, file hashes) are in `characters.js`.
 
-## Development
+## Updating a model
 
-Serve this directory through a local HTTP server for desktop previews. AR requires a secure context and supported hardware.
+1. Export a new `.glb` and `.usdz` from Blender and replace the matching files.
+2. Run the iPhone fixes on the new `.usdz` (see `tools/`):
+   - `rebuild-usdz.py`: stands the model up, sizes it to 1 m and puts it on the floor
+   - `bevel-usdz.py`: applies the rounded edges Blender's USD export leaves out
+   - `aura-usdz.py`: Imabox 04 only, rebuilds the power-up aura
+3. Run `npm test`. It reports any file whose hash no longer matches `characters.js`; update the hash there.
+4. Bump the version (`v17-…`) in `characters.js` and the HTML pages so phones fetch the new files.
 
-Run `npm install` and `npm test` for automated checks.
+The Python tools need `pip install bpy usd-core`.
 
-Keep the licences supplied with Three.js and the QR code libraries in vendor/.
+## Checking locally
+
+```
+npm install
+npm test
+python3 -m http.server
+```
+
+Then open http://localhost:8000. AR itself needs HTTPS and a phone, so test that on the live site.
+
+## Credits
+
+Characters and artwork by Bistyek. Three.js and the QR code library are included in `vendor/` under their own licences.

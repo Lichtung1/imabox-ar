@@ -280,6 +280,13 @@ a.cta::after {
   flex-direction: column;
   justify-content: space-between;
   padding: max(16px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));
+  transition: padding-bottom 0.4s ease;
+}
+/* Chrome shows its own "to exit full screen…" notice along the bottom of the
+   screen for a few seconds when AR starts. A page can't hide it, so the
+   buttons sit above it until it fades, then settle back down. */
+#xr-ui.clear-notice {
+  padding-bottom: calc(env(safe-area-inset-bottom) + 104px);
 }
 #xr-ui .xr-panel {
   pointer-events: auto;

@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { CharacterRig, posedBounds } from './animation.js?v=v16-20260922.1';
-import { approachProgress, stopBeforeViewer } from './movement.js?v=v16-20260922.1';
-import { timeoutSignal } from './platform.js?v=v16-20260922.1';
+import { CharacterRig, posedBounds } from './animation.js?v=v17-20260923.1';
+import { approachProgress, stopBeforeViewer } from './movement.js?v=v17-20260923.1';
+import { timeoutSignal } from './platform.js?v=v17-20260923.1';
 
 // Render the emissive aura without obscuring the character.
 function unwrapGlowMaterials(scene) {
@@ -93,6 +93,7 @@ export async function mountExperience({ config, url, route, art, enter, setStatu
   const overlay = document.createElement('div');
   overlay.id = 'xr-ui';
   overlay.hidden = true;
+  let noticeTimer = 0;
   overlay.innerHTML = `
     <div class="xr-panel">
       <p id="xr-status" role="status"></p>
@@ -186,6 +187,8 @@ export async function mountExperience({ config, url, route, art, enter, setStatu
     playing = false;
     lastTime = null;
     document.body.classList.remove('in-ar');
+    clearTimeout(noticeTimer);
+    overlay.classList.remove('clear-notice');
     overlay.hidden = true;
     marker.visible = false;
     rig.actor.visible = true;
@@ -213,6 +216,11 @@ export async function mountExperience({ config, url, route, art, enter, setStatu
       // Hide immediately: XR setup can take several frames before scan() runs.
       rig.actor.visible = false;
       overlay.hidden = false;
+      // Chrome shows its own "to exit full screen" notice along the bottom for
+      // a few seconds when AR starts. Keep the buttons above it until it fades.
+      overlay.classList.add('clear-notice');
+      clearTimeout(noticeTimer);
+      noticeTimer = setTimeout(() => overlay.classList.remove('clear-notice'), 4500);
       document.body.classList.add('in-ar');
       await renderer.xr.setSession(requested);
       if (session !== requested) return;

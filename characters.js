@@ -1,5 +1,5 @@
 // Animation profiles are tied to the exported asset hashes.
-window.IMABOX_BUILD = "v16-20260922.1";
+window.IMABOX_BUILD = "v17-20260923.1";
 window.IMABOX_DEFAULTS = {
   "startDistance": 5,
   "stopDistance": 2,
@@ -19,7 +19,7 @@ window.IMABOX_CHARACTERS = [
     "image": "assets/imabox--01.png",
     "glb": "char4.glb",
     "usdz": "char4.usdz",
-    "assetRevision": "v16-20260922.1",
+    "assetRevision": "v17-20260923.1",
     "approach": {
       "start": 0,
       "end": 1.5,
@@ -196,7 +196,7 @@ window.IMABOX_CHARACTERS = [
     "image": "assets/imabox--02.png",
     "glb": "char1.glb",
     "usdz": "char1.usdz",
-    "assetRevision": "v16-20260922.1",
+    "assetRevision": "v17-20260923.1",
     "expectedSHA256": "5abace8557610442fc76442427428d54db98cf254004b2d591ffc262a18f82db",
     "motionNode": "Frame",
     "sequence": [
@@ -793,7 +793,7 @@ window.IMABOX_CHARACTERS = [
     "image": "assets/imabox--03.png",
     "glb": "char3.glb",
     "usdz": "char3.usdz",
-    "assetRevision": "v16-20260922.1",
+    "assetRevision": "v17-20260923.1",
     "approach": {
       "start": 0,
       "end": 1.5,
@@ -970,7 +970,7 @@ window.IMABOX_CHARACTERS = [
     "image": "assets/imabox--04.png",
     "glb": "char5.glb",
     "usdz": "char5.usdz",
-    "assetRevision": "v16-20260922.1",
+    "assetRevision": "v17-20260923.1",
     "sequence": [
       {
         "clips": [
@@ -1150,7 +1150,7 @@ window.IMABOX_CHARACTERS = [
     "image": "assets/imabox--05.png",
     "glb": "char2.glb",
     "usdz": "char2.usdz",
-    "assetRevision": "v16-20260922.1",
+    "assetRevision": "v17-20260923.1",
     "approach": {
       "start": 0,
       "end": 1.5,
