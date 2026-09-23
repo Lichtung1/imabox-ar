@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { CharacterRig, posedBounds } from './animation.js?v=v19-20260923.1';
-import { approachProgress, stopBeforeViewer } from './movement.js?v=v19-20260923.1';
-import { timeoutSignal } from './platform.js?v=v19-20260923.1';
+import { CharacterRig, posedBounds } from './animation.js?v=v20-20260923.1';
+import { approachProgress, stopBeforeViewer } from './movement.js?v=v20-20260923.1';
+import { timeoutSignal } from './platform.js?v=v20-20260923.1';
 
 // Render the emissive aura without obscuring the character.
 function unwrapGlowMaterials(scene) {

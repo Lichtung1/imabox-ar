@@ -369,8 +369,10 @@ a.cta::after {
     monospace;
   margin: 0;
 }
+/* Secondary buttons (PLAY AGAIN, PLACE AGAIN, EXIT AR) share the panel's
+   off-white instead of sitting on it as brighter white patches. */
 #xr-ui button {
-  background: #fff;
+  background: transparent;
 }
 #xr-ui .xr-actions {
   display: flex;
