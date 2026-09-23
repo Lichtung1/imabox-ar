@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { CharacterRig, posedBounds } from './animation.js?v=v18-20260923.1';
-import { approachProgress, stopBeforeViewer } from './movement.js?v=v18-20260923.1';
-import { timeoutSignal } from './platform.js?v=v18-20260923.1';
+import { CharacterRig, posedBounds } from './animation.js?v=v19-20260923.1';
+import { approachProgress, stopBeforeViewer } from './movement.js?v=v19-20260923.1';
+import { timeoutSignal } from './platform.js?v=v19-20260923.1';
 
 // Render the emissive aura without obscuring the character.
 function unwrapGlowMaterials(scene) {
@@ -256,7 +256,7 @@ export async function mountExperience({
       // a few seconds when AR starts. Keep the buttons above it until it fades.
       overlay.classList.add('clear-notice');
       clearTimeout(noticeTimer);
-      noticeTimer = setTimeout(() => overlay.classList.remove('clear-notice'), 8000);
+      noticeTimer = setTimeout(() => overlay.classList.remove('clear-notice'), 10500);
       document.body.classList.add('in-ar');
       await renderer.xr.setSession(requested);
       if (session !== requested) return;

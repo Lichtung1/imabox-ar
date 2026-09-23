@@ -57,7 +57,7 @@ async function init() {
     <div class="character-layout">
       <div class="character-art loading" id="art">
         <img id="poster" src="${localUrl(c.image)}" alt="${c.name}" width="1080" height="1080">
-        <div class="loadbar" id="loadbar" hidden><span></span></div>
+        <div class="loadbar indeterminate" id="loadbar"><span></span></div>
       </div>
       <div class="character-info">
         <h1>${c.name}</h1>
@@ -142,6 +142,7 @@ async function init() {
   const glbState = await glbCheck;
   if (glbState === 'missing') {
     $('art').classList.remove('loading');
+    $('loadbar').hidden = true;
     $('preview-status').textContent = '3D preview coming soon.';
     if (route === 'webxr') {
       $('retry').hidden = false;
@@ -156,7 +157,6 @@ async function init() {
   try {
     const { mountExperience } = await import(versioned('js/experience.js'));
     const bar = $('loadbar');
-    bar.hidden = false;
     await mountExperience({
       config,
       url: asset(c.glb),
